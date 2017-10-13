@@ -68,6 +68,6 @@ void vs1053_showstreaminfo(const char *info){           // called from vs1053
 ```
 
 ESP32 developerboard connections
-
+![Connections](https://github.com/schreibfaul1/ESP32-vs1053_ext/blob/master/ESP32_dev_board.jpg)
 
 
