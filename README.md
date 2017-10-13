@@ -1,7 +1,7 @@
 # ESP32 vs1053_ext
 Whith this class You can easily build a MiniWebRadio in Adruino or Eclipse SDK.
 I have found the Originalcode by EdZelf ESP32 Webradio.
-The code is extended with a WiFi-client. You can play many stations, m3u,mp3,aac.
+The code is extended with a WiFi-client. You can play many radiostations.
 Also You can play mp3-files.<br>
 The class provides optional events:<br>
 vs1053_showstreaminfo &nbsp;&nbsp;&nbsp; Shows th connexted URL<br>
