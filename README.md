@@ -50,20 +50,20 @@ void loop()
 // optional:
 void vs1053_info(const char *info) {                // called from vs1053
     Serial.print("DEBUG:       ");
-    Serial.print(info);                                 // debug infos
+    Serial.print(info);                             // debug infos
 }
 
 void vs1053_showstation(const char *info){          // called from vs1053
     Serial.print("STATION:     ");
-    Serial.println(info);                                 // Show station name
+    Serial.println(info);                           // Show station name
 }
 void vs1053_showstreamtitle(const char *info){      // called from vs1053
     Serial.print("STREAMTITLE: ");
-    Serial.print(info);                                 // Show title
+    Serial.print(info);                             // Show title
 }
-void vs1053_showstreaminfo(const char *info){           // called from vs1053
+void vs1053_showstreaminfo(const char *info){       // called from vs1053
     Serial.print("STREAMINFO:  ");
-    Serial.print(info);                                   // Show streaminfo
+    Serial.print(info);                             // Show streaminfo
 }
 ```
 
