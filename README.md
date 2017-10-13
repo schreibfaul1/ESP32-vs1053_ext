@@ -67,6 +67,7 @@ void vs1053_showstreaminfo(const char *info){           // called from vs1053
 }
 ```
 
+ESP32 developerboard connections
 
 
 
