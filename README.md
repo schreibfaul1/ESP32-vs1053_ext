@@ -9,7 +9,7 @@ vs1053_showstreamtitle &nbsp;&nbsp;&nbsp; The played title<br>
 vs1053_showstation &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; The name of the connected station<br>
 vs1053_info &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;  Additional information for debugging<br>
 
-```
+``` c++
 #include "Arduino.h"
 #include <SPI.h>
 #include <WiFi.h>
