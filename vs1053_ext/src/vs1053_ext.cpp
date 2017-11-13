@@ -227,7 +227,7 @@ uint8_t VS1053::getVolume()                              // Get the currenet vol
 //---------------------------------------------------------------------------------------
 void VS1053::startSong()
 {
-    sdi_send_fillers(10);
+    sdi_send_fillers(2052);
 }
 //---------------------------------------------------------------------------------------
 void VS1053::playChunk (uint8_t* data, size_t len)
@@ -462,8 +462,7 @@ void VS1053::handlebyte(uint8_t b, bool force){
     {
         buf[bufcnt++]=b;                                   // Save byte in chunkbuffer
         if(bufcnt == sizeof(buf) || force){                // Buffer full?
-            if(firstchunk)
-            {
+            if(firstchunk){
                 firstchunk=false;
                 if(vs1053_info) vs1053_info("First chunk:\n");  // Header for printout of first chunk
                 for(i=0; i < 32; i+=8){           // Print 4 lines
@@ -729,10 +728,20 @@ void VS1053::handlebyte(uint8_t b, bool force){
 void VS1053::loop(){
     static uint8_t tmpbuff[1024];                         // Input buffer for mp3 stream
     static boolean f_once=false;
+    static boolean f_mp3_end=false;
     uint32_t maxchunk;                                    // Max number of bytes to read
     int res=0;                                            // Result reading from mp3 stream
     uint32_t rs;                                          // Free space in ringbuffer
     uint32_t av;                                          // Available in stream
+
+    if(f_mp3_end==true){ // wait of empty ringbuffer
+        if(rcount==0){
+            sprintf(sbuf,"End of mp3file %s\n",mp3title.c_str());
+            if(vs1053_info) vs1053_info(sbuf);
+            if(vs1053_eof_mp3) vs1053_eof_mp3(mp3title.c_str());
+            f_mp3_end=false;
+        }
+    }
 
     // Try to keep the ringbuffer filled up by adding as much bytes as possible
     if(datamode & (VS1053_INIT | VS1053_HEADER | VS1053_DATA | VS1053_METADATA | // Test op playing
@@ -744,10 +753,9 @@ void VS1053::loop(){
                 av=mp3file.available();                   // Bytes left in file
                 if(av == 0){
                     if(f_once==false){
-                        sprintf(sbuf,"End of mp3file %s\n",mp3title.c_str());
-                        if(vs1053_info) vs1053_info(sbuf);
-                        if(vs1053_eof_mp3) vs1053_eof_mp3(mp3title.c_str());
-                        f_once=true;}
+                        f_mp3_end=true;
+                        f_once=true;
+                    }
                     mp3file.close();
                 }
                 else f_once=false;
@@ -855,9 +863,7 @@ bool VS1053::connecttohost(String host){
             hostwoext.c_str(), port, extension.c_str());
     if(vs1053_info) vs1053_info(sbuf);
     if(vs1053_showstreaminfo) vs1053_showstreaminfo(sbuf);
-
     if(client.connect(hostwoext.c_str(), port)){
-
         if(vs1053_info) vs1053_info("Connected to server\n");
         // This will send the request to the server. Request metadata.
         client.print(String("GET ") +
