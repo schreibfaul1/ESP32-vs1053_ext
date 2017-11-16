@@ -163,10 +163,10 @@ void VS1053::begin(){
 
     // Init SPI in slow mode (0.2 MHz)
     VS1053_SPI=SPISettings(200000, MSBFIRST, SPI_MODE0);
-    printDetails("Right after reset/startup \n");
+//    printDetails("Right after reset/startup \n");
     delay(20);
     //printDetails ("20 msec after reset");
-    testComm("Slow SPI,Testing VS1053 read/write registers... \n");
+    //testComm("Slow SPI,Testing VS1053 read/write registers... \n");
     // Most VS1053 modules will start up in midi mode.  The result is that there is no audio
     // when playing MP3.  You can modify the board, but there is a more elegant way:
     wram_write(0xC017, 3);                             // GPIO DDR=3
@@ -181,13 +181,13 @@ void VS1053::begin(){
     //SPI Clock to 4 MHz. Now you can set high speed SPI clock.
     VS1053_SPI=SPISettings(4000000, MSBFIRST, SPI_MODE0);
     write_register(SCI_MODE, _BV (SM_SDINEW) | _BV(SM_LINE1));
-    testComm("Fast SPI, Testing VS1053 read/write registers again... \n");
+    //testComm("Fast SPI, Testing VS1053 read/write registers again... \n");
     delay(10);
     await_data_request();
     endFillByte=wram_read(0x1E06) & 0xFF;
-    sprintf(sbuf, "endFillByte is %X \n", endFillByte);
-    if(vs1053_info) vs1053_info(sbuf);
-    printDetails("After last clocksetting \n");
+//    sprintf(sbuf, "endFillByte is %X \n", endFillByte);
+//    if(vs1053_info) vs1053_info(sbuf);
+//    printDetails("After last clocksetting \n");
     delay(100);
 }
 //---------------------------------------------------------------------------------------
@@ -434,61 +434,38 @@ void VS1053::handlebyte_ch(uint8_t b, bool force){
 void VS1053::handlebyte(uint8_t b, bool force){
     static uint16_t playlistcnt;                           // Counter to find right entry in playlist
     static bool firstmetabyte;                             // True if first metabyte (counter)
-    static int LFcount;                                    // Detection of end of header
     static __attribute__((aligned(4)))  uint8_t buf[32];   // Buffer for chunk
     static int bufcnt=0;                                   // Data in chunk
-    static bool firstchunk=true;                           // First chunk as input
     String lcml;                                           // Lower case metaline
     static String ct;                                      // Contents type
     String host;
-    static bool ctseen=false;                              // First line of header seen or not
     int inx;                                               // Pointer in metaline
-    int i;                                                 // Loop control
 
-    if(datamode == VS1053_INIT)                            // Initialize for header receive
-    {
-        ctseen=false;                                      // Contents type not seen yet
-        metaint=0;                                         // No metaint found
-        LFcount=0;                                         // For detection end of header
-        bitrate=0;                                         // Bitrate still unknown
-        if(vs1053_info) vs1053_info("Switch to HEADER\n");
-        datamode=VS1053_HEADER;                            // Handle header
-        totalcount=0;                                      // Reset totalcount
-        metaline="";                                       // No metadata yet
-        icyname="";                                        // No StationName yet
-        firstchunk=true;                                   // First chunk expected
-    }
     if(datamode == VS1053_DATA)                            // Handle next byte of MP3/Ogg data
     {
         buf[bufcnt++]=b;                                   // Save byte in chunkbuffer
         if(bufcnt == sizeof(buf) || force){                // Buffer full?
             if(firstchunk){
                 firstchunk=false;
-                if(vs1053_info) vs1053_info("First chunk:\n");  // Header for printout of first chunk
-                for(i=0; i < 32; i+=8){           // Print 4 lines
-                    sprintf(sbuf, "%02X %02X %02X %02X %02X %02X %02X %02X\n",
-                            buf[i], buf[i + 1], buf[i + 2], buf[i + 3],
-                            buf[i + 4], buf[i + 5], buf[i + 6], buf[i + 7]);
-                    if(vs1053_info) vs1053_info(sbuf);
-                }
             }
             playChunk(buf, bufcnt);                        // Yes, send to player
             bufcnt=0;                                      // Reset count
         }
         totalcount++;                                      // Count number of bytes, ignore overflow
-        if(metaint != 0) {                                  // No METADATA on Ogg streams or mp3 files
-            if(--datacount == 0){                           // End of datablock?
-                 if(bufcnt){                                 // Yes, still data in buffer?
+        if(metaint != 0) {                                 // No METADATA on Ogg streams or mp3 files
+            if(--datacount == 0){                          // End of datablock?
+                 if(bufcnt){                               // Yes, still data in buffer?
                     playChunk(buf, bufcnt);                // Yes, send to player
                     bufcnt=0;                              // Reset count
-                }
-                datamode=VS1053_METADATA;
-                if(localfile==true) datamode=VS1053_DATA;  // there are no metadata
-                firstmetabyte=true;                        // Expecting first metabyte (counter)
+                 }
+                 datamode=VS1053_METADATA;
+                 if(localfile==true) datamode=VS1053_DATA;  // there are no metadata
+                 firstmetabyte=true;                        // Expecting first metabyte (counter)
             }
         }
         return;
     }
+
     if(datamode == VS1053_HEADER)                          // Handle next byte of MP3 header
     {
         if((b > 0x7F) ||                                   // Ignore unprintable characters
@@ -726,60 +703,54 @@ void VS1053::handlebyte(uint8_t b, bool force){
 }
 //---------------------------------------------------------------------------------------
 void VS1053::loop(){
-    static uint8_t tmpbuff[1024];                         // Input buffer for mp3 stream
-    static boolean f_once=false;
-    static boolean f_mp3_end=false;
-    uint32_t maxchunk;                                    // Max number of bytes to read
-    int res=0;                                            // Result reading from mp3 stream
-    uint32_t rs;                                          // Free space in ringbuffer
-    uint32_t av;                                          // Available in stream
+    static uint8_t tmpbuff[1024];                           // Input buffer for mp3 stream
+    String tag="";
+    uint32_t maxchunk;                                      // Max number of bytes to read
+    int res=0;                                              // Result reading from mp3 stream
+    uint32_t rs;                                            // Free space in ringbuffer
+    uint32_t av;                                            // Available in stream
 
-    if(f_mp3_end==true){ // wait of empty ringbuffer
-        if(rcount==0){
+    if(localfile){                                          // Playing file from SD card?
+        maxchunk=sizeof(playbuff);
+        av=mp3file.available();                             // Bytes left in file
+        //log_i("av avail %i \n", av);
+        if(av < maxchunk) maxchunk=av;                      // Reduce byte count for this mp3loop()
+        if(maxchunk){                                       // Anything to read?
+            res=mp3file.read(playbuff, maxchunk);           // Read a block of data
+            sdi_send_buffer(playbuff,res);
+        }
+        if(av == 0){
+            mp3file.close();
+            localfile=false;
             sprintf(sbuf,"End of mp3file %s\n",mp3title.c_str());
             if(vs1053_info) vs1053_info(sbuf);
             if(vs1053_eof_mp3) vs1053_eof_mp3(mp3title.c_str());
-            f_mp3_end=false;
         }
     }
 
-    // Try to keep the ringbuffer filled up by adding as much bytes as possible
-    if(datamode & (VS1053_INIT | VS1053_HEADER | VS1053_DATA | VS1053_METADATA | // Test op playing
-            VS1053_PLAYLISTINIT | VS1053_PLAYLISTHEADER | VS1053_PLAYLISTDATA)){
-        rs=ringspace();                                   // Get free ringbuffer space
-        if(rs >= sizeof(tmpbuff)){                        // Need to fill the ringbuffer?
-            maxchunk=sizeof(tmpbuff);                     // Reduce byte count for this mp3loop()
-            if(localfile){                                // Playing file from SD card?
-                av=mp3file.available();                   // Bytes left in file
-                if(av == 0){
-                    if(f_once==false){
-                        f_mp3_end=true;
-                        f_once=true;
-                    }
-                    mp3file.close();
-                }
-                else f_once=false;
-                if(av < maxchunk) maxchunk=av;            // Reduce byte count for this mp3loop()
-                if(maxchunk){                             // Anything to read?
-                    res=mp3file.read(tmpbuff, maxchunk);  // Read a block of data
-                }
-            }
-            else{
-                av=client.available();                    // Available from stream
 
+    // Try to keep the ringbuffer filled up by adding as much bytes as possible
+    if(datamode & (VS1053_HEADER | VS1053_DATA | VS1053_METADATA | // Test op playing
+            VS1053_PLAYLISTINIT | VS1053_PLAYLISTHEADER | VS1053_PLAYLISTDATA)){
+
+
+
+        if(webstream){                                      // Playing file from URL?
+            rs=ringspace();                                   // Get free ringbuffer space
+            if(rs >= sizeof(tmpbuff)){                        // Need to fill the ringbuffer?
+                maxchunk=sizeof(tmpbuff);                       // Reduce byte count for this mp3loop()
+                av=client.available();                    // Available from stream
                 if(av < maxchunk) maxchunk=av;            // Limit read size
                 if(maxchunk){                             // Anything to read?
                     res=client.read(tmpbuff, maxchunk);   // Read a number of bytes from the stream
                     if(res<0) log_e("can't read from client");
+                    if(res>0) putring(tmpbuff, res);              // Transfer to ringbuffer
                 }
             }
-            if(res>0) putring(tmpbuff, res);              // Transfer to ringbuffer
+            while(data_request() && ringused()) {                  // Try to keep VS1053 filled
+                handlebyte_ch(getring());                         // Yes, handle it
+            }
         }
-    }
-    while(data_request() && ringused())                   // Try to keep VS1053 filled
-    {
-        handlebyte_ch(getring());                         // Yes, handle it
-
     }
     if(datamode == VS1053_PLAYLISTDATA){
         if(t0+49<millis()) {
@@ -824,13 +795,25 @@ bool VS1053::connecttohost(String host){
     String extension="/";                                 // May be like "/mp3" in "skonto.ls.lv:8002/mp3"
     String hostwoext;                                     // Host without extension and portnumber
 
+    stopSong();
     stop_mp3client();                                     // Disconnect if still connected
     emptyring();
     localfile=false;
+    webstream=true;
+
     sprintf(sbuf, "Connect to new host: %s\n", host.c_str());
     if(vs1053_info) vs1053_info(sbuf);
 
-    setDatamode(VS1053_INIT);                             // Start default in metamode
+    // initializationsequence
+    ctseen=false;                                           // Contents type not seen yet
+    metaint=0;                                              // No metaint found
+    LFcount=0;                                              // For detection end of header
+    bitrate=0;                                              // Bitrate still unknown
+    setDatamode(VS1053_HEADER);                             // Handle header
+    totalcount=0;                                           // Reset totalcount
+    metaline="";                                            // No metadata yet
+    icyname="";                                             // No StationName yet
+    firstchunk=true;                                        // First chunk expected
     chunked=false;                                        // Assume not chunked
 
     if(host.endsWith(".m3u")|| host.endsWith(".pls")){    // Is it an m3u or pls playlist?
@@ -874,6 +857,8 @@ bool VS1053::connecttohost(String host){
                 String("\r\n") +
                 String("Icy-MetaData:1\r\n") +
                 String("Connection: close\r\n\r\n"));
+
+
         return true;
     }
     sprintf(sbuf, "Request %s failed!\n", host.c_str());
@@ -886,14 +871,13 @@ bool VS1053::connecttohost(String host){
 //---------------------------------------------------------------------------------------
 bool VS1053::connecttoSD(String sdfile){
 
-    ;
     uint16_t i=0, j=0;
 
     stopSong();
     stop_mp3client();                                    // Disconnect if still connected
     emptyring();
     localfile=true;
-
+    webstream=false;
     while(sdfile[i] != 0){  //convert ISO8859-1 to ASCII
         path[j]=sdfile[i];
         if(path[j] == 228) path[j]=132; // ä
@@ -917,6 +901,5 @@ bool VS1053::connecttoSD(String sdfile){
         if(vs1053_info) vs1053_info("Failed to open file for reading\n");
         return false;
     }
-
     return true;
 }
