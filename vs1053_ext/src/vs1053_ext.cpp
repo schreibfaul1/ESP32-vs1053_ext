@@ -6,6 +6,7 @@ VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin) :
     endFillByte=0;
     curvol=50;
     t0=0;
+    LFcount=0;
     ringbuf=(uint8_t *)malloc(ringbfsiz);       // Create ring buffer
 }
 VS1053::~VS1053(){
@@ -704,6 +705,7 @@ void VS1053::handlebyte(uint8_t b, bool force){
 //---------------------------------------------------------------------------------------
 void VS1053::loop(){
     static uint8_t tmpbuff[1024];                           // Input buffer for mp3 stream
+    static uint8_t playbuff[1024];
     String tag="";
     uint32_t maxchunk;                                      // Max number of bytes to read
     int res=0;                                              // Result reading from mp3 stream
@@ -794,7 +796,6 @@ bool VS1053::connecttohost(String host){
     int port=80;                                          // Port number for host
     String extension="/";                                 // May be like "/mp3" in "skonto.ls.lv:8002/mp3"
     String hostwoext;                                     // Host without extension and portnumber
-
     stopSong();
     stop_mp3client();                                     // Disconnect if still connected
     emptyring();

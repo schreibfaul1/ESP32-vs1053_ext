@@ -76,7 +76,10 @@ class VS1053
 	String           metaline ;                     // Readable line in metadata
 	String           mp3title;                      // Name of the mp3 file
 	bool             chunked = false ;              // Station provides chunked transfer
-	int              chunkcount = 0 ;               // Counter for chunked transfer
+    bool             ctseen=false;                  // First line of header seen or not
+    bool             firstchunk=true;               // First chunk as input
+    int              LFcount;                       // Detection of end of header
+    int              chunkcount = 0 ;               // Counter for chunked transfer
 	int metaint = 0;                    			// Number of databytes between metadata
 	int bitrate = 0;                    			// Bitrate in kb/sec
 	uint32_t totalcount = 0;            			// Counter mp3 data
@@ -87,7 +90,8 @@ class VS1053
 	String           playlist ;                     // The URL of the specified playlist
 	int8_t           playlist_num = 0 ;             // Nonzero for selection from playlist
 	bool             hostreq = false ;              // Request for new host
-	bool             localfile = false ;            // Play from local mp3-file or not
+	bool             localfile = false ;            // Play from local mp3-file
+    bool             webstream = false ;            // Play from URL
 	bool             plsFile=false;                 // Set if URL is known
 	bool             plsTitle=false;                // Set if StationName is knowm
 	String           plsURL;
