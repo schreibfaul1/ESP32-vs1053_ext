@@ -3,14 +3,13 @@
 VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin) :
         cs_pin(_cs_pin), dcs_pin(_dcs_pin), dreq_pin(_dreq_pin)
 {
-    endFillByte=0;
+    m_endFillByte=0;
     curvol=50;
-    t0=0;
-    LFcount=0;
-    ringbuf=(uint8_t *)malloc(ringbfsiz);       // Create ring buffer
+    m_t0=0;
+    m_LFcount=0;
 }
 VS1053::~VS1053(){
-    free(ringbuf);
+    // destructor
 }
 //---------------------------------------------------------------------------------------
 void VS1053::control_mode_on()
@@ -93,7 +92,7 @@ void VS1053::sdi_send_fillers(size_t len){
         }
         len-=chunk_length;
         while(chunk_length--){
-            SPI.write(endFillByte);
+            SPI.write(m_endFillByte);
         }
     }
     data_mode_off();
@@ -109,48 +108,6 @@ uint16_t VS1053::wram_read(uint16_t address){
 
     write_register(SCI_WRAMADDR, address);       // Start reading from WRAM
     return read_register(SCI_WRAM);              // Read back result
-}
-//---------------------------------------------------------------------------------------
-bool VS1053::testComm(const char *header){
-
-    // Test the communication with the VS1053 module.  The result wille be returned.
-    // If DREQ is low, there is problably no VS1053 connected.  Pull the line HIGH
-    // in order to prevent an endless loop waiting for this signal.  The rest of the
-    // software will still work, but readbacks from VS1053 will fail.
-    int i;                                       // Loop control
-    uint16_t r1, r2, cnt=0;
-    uint16_t delta=300;                          // 3 for fast SPI
-
-    if( !digitalRead(dreq_pin)){
-
-        if(vs1053_info) vs1053_info("VS1053 not properly installed!\n");
-        // Allow testing without the VS1053 module
-        pinMode(dreq_pin, INPUT_PULLUP);         // DREQ is now input with pull-up
-        return false;                            // return bad result
-    }
-    // Further TESTING.  Check if SCI bus can write and read without errors.
-    // We will use the volume setting for this.
-    // Will give warnings on serial output if DEBUG is active.
-    // A maximum of 20 errors will be reported.
-    if(strstr(header, "Fast")){
-
-        delta=3;                                        // Fast SPI, more loops
-    }
-    if(vs1053_info) vs1053_info(header);                // Show a header
-    for(i=0; (i < 0xFFFF) && (cnt < 20); i+=delta){
-
-        write_register(SCI_VOL, i);                     // Write data to SCI_VOL
-        r1=read_register(SCI_VOL);                      // Read back for the first time
-        r2=read_register(SCI_VOL);                      // Read back a second time
-        if(r1 != r2 || i != r1 || i != r2){             // Check for 2 equal reads
-
-            sprintf(sbuf, "VS1053 error retry SB:%04X R1:%04X R2:%04X \n", i, r1, r2);
-            if(vs1053_info) vs1053_info(sbuf);
-            cnt++;
-            delay(10);
-        }
-    }
-    return (cnt == 0);                                 // Return the result
 }
 //---------------------------------------------------------------------------------------
 void VS1053::begin(){
@@ -185,7 +142,7 @@ void VS1053::begin(){
     //testComm("Fast SPI, Testing VS1053 read/write registers again... \n");
     delay(10);
     await_data_request();
-    endFillByte=wram_read(0x1E06) & 0xFF;
+    m_endFillByte=wram_read(0x1E06) & 0xFF;
 //    sprintf(sbuf, "endFillByte is %X \n", endFillByte);
 //    if(vs1053_info) vs1053_info(sbuf);
 //    printDetails("After last clocksetting \n");
@@ -231,11 +188,6 @@ void VS1053::startSong()
     sdi_send_fillers(2052);
 }
 //---------------------------------------------------------------------------------------
-void VS1053::playChunk (uint8_t* data, size_t len)
-{
-  sdi_send_buffer (data, len);
-}
-//---------------------------------------------------------------------------------------
 void VS1053::stopSong()
 {
     uint16_t modereg;                     // Read from mode register
@@ -274,58 +226,16 @@ void VS1053::printDetails(const char *header){
     if(vs1053_info) vs1053_info(header);
     if(vs1053_info) vs1053_info("REG   Contents \n");
     if(vs1053_info) vs1053_info("---   ----- \n");
-    for(i=0; i <= SCI_num_registers; i++)
+    for(i=0; i <= SCI_AICTRL3; i++)
             {
         regbuf[i]=read_register(i);
     }
-    for(i=0; i <= SCI_num_registers; i++)
+    for(i=0; i <= SCI_AICTRL3; i++)
             {
         delay(5);
         sprintf(sbuf, "%3X - %5X \n", i, regbuf[i]);
         if(vs1053_info) vs1053_info(sbuf);
     }
-}
-//---------------------------------------------------------------------------------------
-uint16_t VS1053::ringspace(){
-    return (ringbfsiz - rcount);                                 // Free space available
-}
-//---------------------------------------------------------------------------------------
-void VS1053::putring(uint8_t* buf, uint16_t len){
-    uint16_t partl;                                              // Partial length to xfer
-
-    if(len){                                                     // anything to do?
-        // First see if we must split the transfer.  We cannot write past the ringbuffer end.
-        if((rbwindex + len) >= ringbfsiz){
-            partl=ringbfsiz - rbwindex;                          // Part of length to xfer
-            memcpy(ringbuf + rbwindex, buf, partl);              // Copy next part
-            rbwindex=0;
-            rcount+=partl;                                       // Adjust number of bytes
-            buf+=partl;                                          // Point to next free byte
-            len-=partl;                                          // Adjust rest length
-        }
-        if(len){                                                 // Rest to do?
-            memcpy(ringbuf + rbwindex, buf, len);                // Copy full or last part
-            rbwindex+=len;                                       // Point to next free byte
-            rcount+=len;                                         // Adjust number of bytes
-        }
-    }
-}
-//---------------------------------------------------------------------------------------
-uint8_t VS1053::getring()
-{
-    // Assume there is always something in the bufferpace.  See ringavail()
-    if(++rbrindex == ringbfsiz){      // Increment pointer and
-        rbrindex=0;                    // wrap at end
-    }
-    rcount--;                          // Count is now one less
-    return *(ringbuf + rbrindex);      // return the oldest byte
-}
-//---------------------------------------------------------------------------------------
-void VS1053::emptyring()
-{
-    rbwindex=0;                      // Reset ringbuffer administration
-    rbrindex=ringbfsiz - 1;
-    rcount=0;
 }
 //---------------------------------------------------------------------------------------
 bool VS1053::chkhdrline(const char* str){
@@ -337,7 +247,7 @@ bool VS1053::chkhdrline(const char* str){
         if( !isalpha(b)){                              // Alpha (a-z, A-Z)
             if(b != '-'){                              // Minus sign is allowed
                 if((b == ':') || (b == ';')){          // Found a colon or semicolon?
-                    return ((len > 5) && (len < 50));  // Yes, okay if length is okay
+                    return ((len > 5) && (len < 200)); // Yes, okay if length is okay
                 }
                 else{
                     return false;                      // Not a legal character
@@ -377,455 +287,480 @@ void VS1053::showstreamtitle(const char *ml, bool full){
     }
     else
     {
-        icystreamtitle="";                             // Unknown type
-        return;                                        // Do not show
+        m_icystreamtitle="";             				// Unknown type
+        return;                                       	// Do not show
     }
     // Save for status request from browser and for MQTT
-    icystreamtitle=streamtitle;
-    if((p1=strstr(streamtitle, " - ")))                // look for artist/title separator
+    m_icystreamtitle=streamtitle;
+    if((p1=strstr(streamtitle, " - ")))                	// look for artist/title separator
     {
-        *p1++='\n';                                    // Found: replace 3 characters by newline
+        *p1++='\n';                                    	// Found: replace 3 characters by newline
         p2=p1 + 2;
-        if( *p2 == ' ')                                // Leading space in title?
+        if( *p2 == ' ')                                	// Leading space in title?
                 {
             p2++;
         }
-        strcpy(p1, p2);                                // Shift 2nd part of title 2 or 3 places
+        strcpy(p1, p2);                                	// Shift 2nd part of title 2 or 3 places
     }
     sprintf(sbuf, "Streamtitle: %s\n", streamtitle);
     if(vs1053_info) vs1053_info(sbuf);
     if(vs1053_showstreamtitle) vs1053_showstreamtitle(streamtitle);
 }
 //---------------------------------------------------------------------------------------
-void VS1053::handlebyte_ch(uint8_t b, bool force){
+void VS1053::handlebyte(uint8_t b){
+    static uint16_t playlistcnt;                           		// Counter to find right entry in playlist
+    String lcml;                                           		// Lower case metaline
+    static String ct;                                      		// Contents type
+    static String host;
+    int inx;                                               		// Pointer in metaline
 
-    static int chunksize=0;                                // Chunkcount read from stream
-
-    if(chunked && !force &&                                // Test op DATA handling
-            (datamode & (VS1053_DATA | VS1053_METADATA | VS1053_PLAYLISTDATA)))
-            {
-        if(chunkcount == 0)                                // Expecting a new chunkcount?
-                {
-            if(b == '\r'){                                 // Skip CR
-                return;
-            }
-            else if(b == '\n'){                            // LF ?
-                chunkcount=chunksize;                      // Yes, set new count
-                //log_e("chunksize %i", chunksize);
-                chunksize=0;                               // For next decode
-                return;
-            }
-            // We have received a hexadecimal character.  Decode it and add to the result.
-            b=toupper(b) - '0';                            // Be sure we have uppercase
-            if(b > 9) b = b - 7;                           // Translate A..F to 10..15
-            chunksize=(chunksize << 4) + b;
-        }
-        else
-        {
-            handlebyte(b, force);                          // Normal data byte
-            chunkcount--;                                  // Update count to next chunksize block
-        }
-    }
-    else
+    if(m_datamode == VS1053_HEADER)                          	// Handle next byte of MP3 header
     {
-        handlebyte(b, force);                              // Normal handling of this byte
-    }
-}
-//---------------------------------------------------------------------------------------
-void VS1053::handlebyte(uint8_t b, bool force){
-    static uint16_t playlistcnt;                           // Counter to find right entry in playlist
-    static bool firstmetabyte;                             // True if first metabyte (counter)
-    static __attribute__((aligned(4)))  uint8_t buf[32];   // Buffer for chunk
-    static int bufcnt=0;                                   // Data in chunk
-    String lcml;                                           // Lower case metaline
-    static String ct;                                      // Contents type
-    String host;
-    int inx;                                               // Pointer in metaline
-
-    if(datamode == VS1053_DATA)                            // Handle next byte of MP3/Ogg data
-    {
-        buf[bufcnt++]=b;                                   // Save byte in chunkbuffer
-        if(bufcnt == sizeof(buf) || force){                // Buffer full?
-            if(firstchunk){
-                firstchunk=false;
-            }
-            playChunk(buf, bufcnt);                        // Yes, send to player
-            bufcnt=0;                                      // Reset count
-        }
-        totalcount++;                                      // Count number of bytes, ignore overflow
-        if(metaint != 0) {                                 // No METADATA on Ogg streams or mp3 files
-            if(--datacount == 0){                          // End of datablock?
-                 if(bufcnt){                               // Yes, still data in buffer?
-                    playChunk(buf, bufcnt);                // Yes, send to player
-                    bufcnt=0;                              // Reset count
-                 }
-                 datamode=VS1053_METADATA;
-                 if(localfile==true) datamode=VS1053_DATA;  // there are no metadata
-                 firstmetabyte=true;                        // Expecting first metabyte (counter)
-            }
-        }
-        return;
-    }
-
-    if(datamode == VS1053_HEADER)                          // Handle next byte of MP3 header
-    {
-        if((b > 0x7F) ||                                   // Ignore unprintable characters
-                (b == '\r') ||                             // Ignore CR
-                (b == '\0'))                               // Ignore NULL
+        if((b > 0x7F) ||                                   		// Ignore unprintable characters
+                (b == '\r') ||                             		// Ignore CR
+                (b == '\0'))                               		// Ignore NULL
                 {
             // Yes, ignore
         }
-        else if(b == '\n'){                                // Linefeed ?
-            LFcount++;                                     // Count linefeeds
-            if(chkhdrline(metaline.c_str())){              // Reasonable input?
-                lcml=metaline;                             // Use lower case for compare
+        else if(b == '\n'){                                		// Linefeed ?
+            m_LFcount++;                                     	// Count linefeeds
+            if(chkhdrline(m_metaline.c_str())){              	// Reasonable input?
+                lcml=m_metaline;                             	// Use lower case for compare
                 lcml.toLowerCase();
-                sprintf(sbuf, "%s\n", metaline.c_str());
-                if(vs1053_info) vs1053_info(sbuf);         // Yes, Show it
-                if(lcml.indexOf("content-type") >= 0){     // Line with "Content-Type: xxxx/yyy"
-                    ctseen=true;                           // Yes, remember seeing this
-                    ct=metaline.substring(14);             // Set contentstype. Not used yet
-                    //ct.trim;
-                    sprintf(sbuf, "%s seen.\n", ct.c_str());
-                    if(vs1053_info) vs1053_info(sbuf);
+                sprintf(sbuf, "%s\n", m_metaline.c_str());
+                if(vs1053_info) vs1053_info(sbuf);         		// Yes, Show it
+                if(lcml.indexOf("content-type:") >= 0){     	// Line with "Content-Type: xxxx/yyy"
+                    if(lcml.indexOf("audio") >= 0){             // Is ct audio?
+                        m_ctseen=true;                          // Yes, remember seeing this
+                        ct=m_metaline.substring(14);            // Set contentstype. Not used yet
+                        sprintf(sbuf, "%s seen.\n", ct.c_str());
+                        if(vs1053_info) vs1053_info(sbuf);
+                    }
+                    if(lcml.indexOf("ogg") >= 0){               // Is ct ogg?
+                        m_ctseen=true;                          // Yes, remember seeing this
+                        ct=m_metaline.substring(14);
+                        sprintf(sbuf, "%s seen.\n", ct.c_str());
+                        if(vs1053_info) vs1053_info(sbuf);
+                        m_metaint=0;                            // ogg has no metadata
+                        m_bitrate=0;
+                        m_icyname=="";
+                        m_f_ogg=true;
+                    }
+
                 }
-                if(lcml.startsWith("location:")){
-                    host=metaline.substring(lcml.indexOf("http://")+7,lcml.length());// use metaline instead lcml
+                else if(lcml.startsWith("location:")){
+                    host=m_metaline.substring(lcml.indexOf("http://")+7,lcml.length());// use metaline instead lcml
                     if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
                     log_i("redirect to host %s", host.c_str());
                     connecttohost(host);
                 }
-
-                if(lcml.startsWith("icy-br:")){
-                    bitrate=metaline.substring(7).toInt(); // Found bitrate tag, read the bitrate
-                    if(bitrate == 0){                      // For Ogg br is like "Quality 2"
-                        bitrate=87;                        // Dummy bitrate
-                    }
+                else if(lcml.startsWith("icy-br:")){
+                    m_bitrate=m_metaline.substring(7).toInt(); 	// Found bitrate tag, read the bitrate
+                    sprintf(sbuf,"%d", m_bitrate);
+                    if(vs1053_bitrate) vs1053_bitrate(sbuf);
                 }
-                else if(metaline.startsWith("icy-metaint:")){
-                    metaint=metaline.substring(12).toInt();// Found metaint tag, read the value
+                else if(lcml.startsWith("icy-metaint:")){
+                    m_metaint=m_metaline.substring(12).toInt();	// Found metaint tag, read the value
+                    //if(m_metaint==0) m_metaint=16000;           // if no set to default
                 }
                 else if(lcml.startsWith("icy-name:")){
-                    icyname=metaline.substring(9);         // Get station name
-                    icyname.trim();                        // Remove leading and trailing spaces
-                    if(icyname!=""){
-                        if(vs1053_showstation) vs1053_showstation(icyname.c_str());
+                    m_icyname=m_metaline.substring(9);         	// Get station name
+                    m_icyname.trim();                        	// Remove leading and trailing spaces
+                    if(m_icyname!=""){
+                        if(vs1053_showstation) vs1053_showstation(m_icyname.c_str());
                     }
-//                    for(int z=0; z<icyname.length();z++) log_e("%i",icyname[z]);
+//                    for(int z=0; z<m_icyname.length();z++) log_e("%i",m_icyname[z]);
                 }
-                else if(lcml.startsWith("transfer-encoding:"))
-                        {
+                else if(lcml.startsWith("transfer-encoding:")){
                     // Station provides chunked transfer
-                    if(metaline.endsWith("chunked"))
-                            {
-                        chunked=true;                      // Remember chunked transfer mode
+                    if(m_metaline.endsWith("chunked")){
+                        m_chunked=true;                      	// Remember chunked transfer mode
                         log_i("chunked data transfer");
-                        chunkcount=0;                      // Expect chunkcount in DATA
+                        m_chunkcount=0;                      	// Expect chunkcount in DATA
                     }
+                }
+                else{
+                    if(vs1053_info) vs1053_info(m_metaline.c_str()); // all other
                 }
             }
-            metaline="";                                   // Reset this line
-            if((LFcount == 2) && ctseen){                   // Some data seen and a double LF?
-                sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d\n", bitrate, metaint); // Show bitrate and metaint
+            m_metaline="";                             			// Reset this line
+            if((m_LFcount == 2) && m_ctseen){                   // Some data seen and a double LF?
+                sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
                 if(vs1053_info) vs1053_info(sbuf);
-                // if no icyname available show defaultname from nvs
-                if(icyname==""){if(vs1053_showstation) vs1053_showstation("");}
-                datamode=VS1053_DATA;                      // Expecting data now
-                datacount=metaint;                         // Number of bytes before first metadata
-                bufcnt=0;                                  // Reset buffer count
-                startSong();                               // Start a new song
+                if(m_icyname==""){if(vs1053_showstation) vs1053_showstation("");} // no icyname available
+                if(m_bitrate==0){if(vs1053_bitrate) vs1053_bitrate("");} // no bitrate received
+                m_datamode=VS1053_DATA;                      	// Expecting data now
+                if(m_f_ogg==true){
+                    m_datamode=VS1053_OGG;                      // Overwrite m_datamode
+                    m_f_ogg=false;
+                }
+                startSong();                               		// Start a new song
             }
         }
         else
         {
-            metaline+=(char)b;                             // Normal character, put new char in metaline
-            LFcount=0;                                     // Reset double CRLF detection
+            m_metaline+=(char)b;                             	// Normal character, put new char in metaline
+            m_LFcount=0;                                     	// Reset double CRLF detection
         }
         return;
     }
-    if(datamode == VS1053_METADATA)                        // Handle next byte of metadata
+    if(m_datamode == VS1053_METADATA)                        	// Handle next byte of metadata
     {
-        if(firstmetabyte)                                  // First byte of metadata?
+        if(m_firstmetabyte)                                  	// First byte of metadata?
         {
-            firstmetabyte=false;                           // Not the first anymore
-            metacount=b * 16 + 1;                          // New count for metadata including length byte
-            if(metacount > 1)
-                    {
-
-                sprintf(sbuf, "Metadata block %d bytes\n", // Most of the time there are zero bytes of metadata
-                        metacount - 1);
+            m_firstmetabyte=false;                           	// Not the first anymore
+            m_metacount=b * 16 + 1;                          	// New count for metadata including length byte
+            if(m_metacount > 1){
+                sprintf(sbuf, "Metadata block %d bytes\n", 		// Most of the time there are zero bytes of metadata
+                        m_metacount - 1);
                 if(vs1053_info) vs1053_info(sbuf);
-
-            }
-            metaline="";                                   // Set to empty
+           }
+            m_metaline="";                                   	// Set to empty
         }
         else
         {
-            metaline+=(char)b;                             // Normal character, put new char in metaline
+            m_metaline+=(char)b;                             	// Normal character, put new char in metaline
         }
-        if(--metacount == 0)
-                {
-            if(metaline.length())                          // Any info present?
-            {
+        if(--m_metacount == 0){
+            if(m_metaline.length()){                          	// Any info present?
                 // metaline contains artist and song name.  For example:
                 // "StreamTitle='Don McLean - American Pie';StreamUrl='';"
                 // Sometimes it is just other info like:
                 // "StreamTitle='60s 03 05 Magic60s';StreamUrl='';"
                 // Isolate the StreamTitle, remove leading and trailing quotes if present.
-                if( !localfile) showstreamtitle(metaline.c_str(), true);         // Show artist and title if present in metadata
+                if( !m_f_localfile) showstreamtitle(m_metaline.c_str(), true);         // Show artist and title if present in metadata
             }
-            if(metaline.length() > 1500)                   // Unlikely metaline length?
-                    {
+            if(m_metaline.length() > 1500){                   	// Unlikely metaline length?
                 if(vs1053_info) vs1053_info("Metadata block to long! Skipping all Metadata from now on.\n");
-                metaint=0;                                 // Probably no metadata
-                metaline="";                               // Do not waste memory on this
+                m_metaint=16000;                               	// Probably no metadata
+                m_metaline="";                               	// Do not waste memory on this
             }
-            datacount=metaint;                             // Reset data count
-            bufcnt=0;                                      // Reset buffer count
-            datamode=VS1053_DATA;                          // Expecting data
-
+            m_datamode=VS1053_DATA;                          	// Expecting data
         }
     }
-    if(datamode == VS1053_PLAYLISTINIT)                    // Initialize for receive .m3u file
+    if(m_datamode == VS1053_PLAYLISTINIT)                    	// Initialize for receive .m3u file
     {
         // We are going to use metadata to read the lines from the .m3u file
         // Sometimes this will only contain a single line
-        metaline="";                                       // Prepare for new line
-        LFcount=0;                                         // For detection end of header
-        datamode=VS1053_PLAYLISTHEADER;                    // Handle playlist data
-        playlistcnt=1;                                     // Reset for compare
-        totalcount=0;                                      // Reset totalcount
+        m_metaline="";                                       	// Prepare for new line
+        m_LFcount=0;                                         	// For detection end of header
+        m_datamode=VS1053_PLAYLISTHEADER;                    	// Handle playlist data
+        playlistcnt=1;                                     		// Reset for compare
+        m_totalcount=0;                                      	// Reset totalcount
         if(vs1053_info) vs1053_info("Read from playlist\n");
     }
-    if(datamode == VS1053_PLAYLISTHEADER){                 // Read header
-        if((b > 0x7F) ||                                   // Ignore unprintable characters
-                (b == '\r') ||                             // Ignore CR
-                (b == '\0'))                               // Ignore NULL
+    if(m_datamode == VS1053_PLAYLISTHEADER){                 	// Read header
+        if((b > 0x7F) ||                                   		// Ignore unprintable characters
+                (b == '\r') ||                             		// Ignore CR
+                (b == '\0'))                               		// Ignore NULL
                 {
             // Yes, ignore
         }
-        else if(b == '\n')                                 // Linefeed ?
+        else if(b == '\n')                                 		// Linefeed ?
                 {
-            LFcount++;                                     // Count linefeeds
-            sprintf(sbuf, "Playlistheader: %s\n", metaline.c_str());  // Show playlistheader
+            m_LFcount++;                                     	// Count linefeeds
+            sprintf(sbuf, "Playlistheader: %s\n", m_metaline.c_str());  // Show playlistheader
             if(vs1053_info) vs1053_info(sbuf);
-            metaline="";                                   // Ready for next line
-            if(LFcount == 2)
+            m_metaline="";                                   	// Ready for next line
+            if(m_LFcount == 2)
                     {
                 if(vs1053_info) vs1053_info("Switch to PLAYLISTDATA\n");
-                datamode=VS1053_PLAYLISTDATA;              // Expecting data now
+                m_datamode=VS1053_PLAYLISTDATA;              	// Expecting data now
                 return;
             }
         }
         else
         {
-            metaline+=(char)b;                             // Normal character, put new char in metaline
-            LFcount=0;                                     // Reset double CRLF detection
+            m_metaline+=(char)b;                             	// Normal character, put new char in metaline
+            m_LFcount=0;                                     	// Reset double CRLF detection
         }
     }
-    if(datamode == VS1053_PLAYLISTDATA)                    // Read next byte of .m3u file data
+    if(m_datamode == VS1053_PLAYLISTDATA)                    	// Read next byte of .m3u file data
     {
-        t0=millis();
-        if((b > 0x7F) ||                                   // Ignore unprintable characters
-                (b == '\r') ||                             // Ignore CR
-                (b == '\0'))                               // Ignore NULL
+        m_t0=millis();
+        if((b > 0x7F) ||                                   		// Ignore unprintable characters
+                (b == '\r') ||                             		// Ignore CR
+                (b == '\0'))                               		// Ignore NULL
                 { /* Yes, ignore */ }
 
-        else if(b == '\n'){                              // Linefeed or end of string?
-            sprintf(sbuf, "Playlistdata: %s\n", metaline.c_str());  // Show playlistdata
+        else if(b == '\n'){                              		// Linefeed or end of string?
+            sprintf(sbuf, "Playlistdata: %s\n", m_metaline.c_str());  // Show playlistdata
             if(vs1053_info) vs1053_info(sbuf);
-            if(playlist.endsWith("m3u")){
-                if(metaline.length() < 5) {                     // Skip short lines
-                    metaline="";                               // Flush line
+            if(m_playlist.endsWith("m3u")){
+                if(m_metaline.length() < 5) {                  	// Skip short lines
+                    m_metaline="";								// Flush line
                     return;}
-                if(metaline.indexOf("#EXTINF:") >= 0){          // Info?
-                    if(playlist_num == playlistcnt){            // Info for this entry?
-                        inx=metaline.indexOf(",");             // Comma in this line?
+                if(m_metaline.indexOf("#EXTINF:") >= 0){       	// Info?
+                    if(m_playlist_num == playlistcnt){          // Info for this entry?
+                        inx=m_metaline.indexOf(",");            // Comma in this line?
                         if(inx > 0){
                             // Show artist and title if present in metadata
-                            showstreamtitle(metaline.substring(inx + 1).c_str(), true);}}}
-                if(metaline.startsWith("#")){                   // Commentline?
-                    metaline="";
+                            showstreamtitle(m_metaline.substring(inx + 1).c_str(), true);}}}
+                if(m_metaline.startsWith("#")){        			// Commentline?
+                    m_metaline="";
                     return;}                                    // Ignore commentlines
                 // Now we have an URL for a .mp3 file or stream.  Is it the rigth one?
                 //if(metaline.indexOf("&")>0)metaline=host.substring(0,metaline.indexOf("&"));
-                sprintf(sbuf, "Entry %d in playlist found: %s\n", playlistcnt, metaline.c_str());
+                sprintf(sbuf, "Entry %d in playlist found: %s\n", playlistcnt, m_metaline.c_str());
                 if(vs1053_info) vs1053_info(sbuf);
-                if(metaline.indexOf("&")){
-                    metaline=metaline.substring(0, metaline.indexOf("&"));}
-                if(playlist_num == playlistcnt){
-                    inx=metaline.indexOf("http://");           // Search for "http://"
-                    if(inx >= 0){                              // Does URL contain "http://"?
-                        host=metaline.substring(inx + 7);}     // Yes, remove it and set host
+                if(m_metaline.indexOf("&")){
+                    m_metaline=m_metaline.substring(0, m_metaline.indexOf("&"));}
+                if(m_playlist_num == playlistcnt){
+                    inx=m_metaline.indexOf("http://");     		// Search for "http://"
+                    if(inx >= 0){                              	// Does URL contain "http://"?
+                        host=m_metaline.substring(inx + 7);} 	// Yes, remove it and set host
                     else{
-                        host=metaline;}                        // Yes, set new host
+                        host=m_metaline;}              			// Yes, set new host
                     log_i("connecttohost %s", host.c_str());
-                    connecttohost(host);                       // Connect to it
+                    connecttohost(host);                       	// Connect to it
                 }
-                metaline="";
-                host=playlist;                                 // Back to the .m3u host
-                playlistcnt++;                                 // Next entry in playlist
+                m_metaline="";
+                host=m_playlist;                    			// Back to the .m3u host
+                playlistcnt++;                                 	// Next entry in playlist
             } //m3u
-            if(playlist.endsWith("pls")){
-                if(metaline.startsWith("File1")){
-                    inx=metaline.indexOf("http://");           // Search for "http://"
-                    if(inx >= 0){                              // Does URL contain "http://"?
-                        plsURL=metaline.substring(inx + 7);    // Yes, remove it
-                        if(plsURL.indexOf("&")>0)plsURL=plsURL.substring(0,plsURL.indexOf("&")); // remove parameter
+            if(m_playlist.endsWith("pls")){
+                if(m_metaline.startsWith("File1")){
+                    inx=m_metaline.indexOf("http://");  		// Search for "http://"
+                    if(inx >= 0){                              	// Does URL contain "http://"?
+                        m_plsURL=m_metaline.substring(inx + 7);	// Yes, remove it
+                        if(m_plsURL.indexOf("&")>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf("&")); // remove parameter
                         // Now we have an URL for a .mp3 file or stream in host.
 
-                        plsFile=true;
+                        m_f_plsFile=true;
                     }
                 }
-                if(metaline.startsWith("Title1")){
-                    plsStationName=metaline.substring(7);
-                    if(vs1053_showstation) vs1053_showstation(plsStationName.c_str());
-                    sprintf(sbuf, "StationName: %s\n", plsStationName.c_str());
+                if(m_metaline.startsWith("Title1")){
+                    m_plsStationName=m_metaline.substring(7);
+                    if(vs1053_showstation) vs1053_showstation(m_plsStationName.c_str());
+                    sprintf(sbuf, "StationName: %s\n", m_plsStationName.c_str());
                     if(vs1053_info) vs1053_info(sbuf);
-                    plsTitle=true;
+                    m_f_plsTitle=true;
                 }
-                if(metaline.startsWith("Length1")) plsTitle=true; // if no Title is available
-                if((plsFile==true)&&(metaline.length()==0)) plsTitle=true;
-                metaline="";
-                if(plsFile && plsTitle){ //we have both StationName and StationURL
-                    plsFile=false; plsTitle=false;
+                if(m_metaline.startsWith("Length1")) m_f_plsTitle=true; // if no Title is available
+                if((m_f_plsFile==true)&&(m_metaline.length()==0)) m_f_plsTitle=true;
+                m_metaline="";
+                if(m_f_plsFile && m_f_plsTitle){ 	//we have both StationName and StationURL
+                    m_f_plsFile=false; m_f_plsTitle=false;
                     log_i("connecttohost %s", host.c_str());
-                    connecttohost(plsURL); // Connect to it
-
+                    connecttohost(m_plsURL); 		// Connect to it
                 }
             }
         }
         else
         {
-            metaline+=(char)b;                             // Normal character, add it to metaline
+            m_metaline+=(char)b;         			// Normal character, add it to metaline
         }
         return;
     }
 }
 //---------------------------------------------------------------------------------------
+uint16_t VS1053::ringused(){
+    return (m_rcount);                                 // Free space available
+}
+//---------------------------------------------------------------------------------------
 void VS1053::loop(){
-    static uint8_t tmpbuff[1024];                           // Input buffer for mp3 stream
-    static uint8_t playbuff[1024];
-    String tag="";
-    uint32_t maxchunk;                                      // Max number of bytes to read
-    int res=0;                                              // Result reading from mp3 stream
-    uint32_t rs;                                            // Free space in ringbuffer
-    uint32_t av;                                            // Available in stream
 
-    if(localfile){                                          // Playing file from SD card?
-        maxchunk=sizeof(playbuff);
-        av=mp3file.available();                             // Bytes left in file
-        //log_i("av avail %i \n", av);
-        if(av < maxchunk) maxchunk=av;                      // Reduce byte count for this mp3loop()
-        if(maxchunk){                                       // Anything to read?
-            res=mp3file.read(playbuff, maxchunk);           // Read a block of data
-            sdi_send_buffer(playbuff,res);
-        }
-        if(av == 0){
-            mp3file.close();
-            localfile=false;
-            sprintf(sbuf,"End of mp3file %s\n",mp3title.c_str());
-            if(vs1053_info) vs1053_info(sbuf);
-            if(vs1053_eof_mp3) vs1053_eof_mp3(mp3title.c_str());
-        }
+    uint16_t part=0;                                        // part at the end of the ringbuffer
+    uint16_t bcs=0;                                         // bytes can current send
+    int16_t  res=0;                                         // number of bytes getting from client
+    uint16_t btp=0;                                         // bytes to play
+    static uint16_t rcount=0;                               // max bytes handover to the player
+    uint16_t maxchunk=0x1000;                               // max number of bytes to read, 4096d is enough
+    uint32_t  av=0;                                         // available in stream
+    static int32_t  count=0;                                // bytecounter between metadata
+    static uint16_t chunksize=0;                            // Chunkcount read from stream
+
+    if(m_f_localfile){                                      // Playing file from SD card?
+         av=mp3file.available();                            // Bytes left in file
+         if(av < maxchunk) maxchunk=av;                     // Reduce byte count for this mp3loop()
+         if(maxchunk){                                      // Anything to read?
+             m_btp=mp3file.read(m_ringbuf, maxchunk);       // Read a block of data
+             sdi_send_buffer(m_ringbuf,m_btp);
+         }
+         if(av == 0){                                       // No more data from SD Card
+             mp3file.close();
+             m_f_localfile=false;
+             sprintf(sbuf,"End of mp3file %s\n",m_mp3title.c_str());
+             if(vs1053_info) vs1053_info(sbuf);
+             if(vs1053_eof_mp3) vs1053_eof_mp3(m_mp3title.c_str());
+         }
     }
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if(m_f_webstream){                                      // Playing file from URL?
+        av=client.available();// Available from stream
+        if(av){
+            m_ringspace=m_ringbfsiz - m_rcount;
+            part=m_ringbfsiz - m_rbwindex;                  // Part of length to xfer
+            if(part>m_ringspace)part=m_ringspace;
+            res=client.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
+            m_rcount+=res;
+            m_rbwindex+=res;
+            if(m_rbwindex==m_ringbfsiz) m_rbwindex=0;
+        }
 
+        if(m_datamode == VS1053_PLAYLISTDATA){
+            if(m_t0+49<millis()) {
+                log_i("terminate metaline after 50ms");     // if mo data comes from host
+                handlebyte('\n');                           // send LF
+            }
+        }
 
-    // Try to keep the ringbuffer filled up by adding as much bytes as possible
-    if(datamode & (VS1053_HEADER | VS1053_DATA | VS1053_METADATA | // Test op playing
-            VS1053_PLAYLISTINIT | VS1053_PLAYLISTHEADER | VS1053_PLAYLISTDATA)){
+        if(m_chunked==false){rcount=m_rcount;}
+        else{
+            while(m_rcount){
+                if((m_chunkcount+rcount) == 0){             // Expecting a new chunkcount?
+                    uint8_t b =m_ringbuf[m_rbrindex];
+                    if(++m_rbrindex == m_ringbfsiz){        // Increment pointer and
+                        m_rbrindex=0;                       // wrap at end
+                    }
+                    m_rcount--;
+                    if(b=='\r'){}
+                    else if(b=='\n'){
+                        m_chunkcount=chunksize;
+                        chunksize=0;
+                    }
+                    else{
+                        // We have received a hexadecimal character.  Decode it and add to the result.
+                        b=toupper(b) - '0';                         // Be sure we have uppercase
+                        if(b > 9) b = b - 7;                        // Translate A..F to 10..15
+                        chunksize=(chunksize << 4) + b;
+                    }
 
-
-
-        if(webstream){                                      // Playing file from URL?
-            rs=ringspace();                                   // Get free ringbuffer space
-            if(rs >= sizeof(tmpbuff)){                        // Need to fill the ringbuffer?
-                maxchunk=sizeof(tmpbuff);                       // Reduce byte count for this mp3loop()
-                av=client.available();                    // Available from stream
-                if(av < maxchunk) maxchunk=av;            // Limit read size
-                if(maxchunk){                             // Anything to read?
-                    res=client.read(tmpbuff, maxchunk);   // Read a number of bytes from the stream
-                    if(res<0) log_e("can't read from client");
-                    if(res>0) putring(tmpbuff, res);              // Transfer to ringbuffer
+                }
+                else break;
+            }
+            if(rcount==0){ //all bytes consumed?
+                if(m_chunkcount>m_rcount){
+                    m_chunkcount-=m_rcount;
+                    rcount=m_rcount;
+                }
+                else{
+                    rcount=m_chunkcount;
+                    m_chunkcount-=rcount;
                 }
             }
-            while(data_request() && ringused()) {                  // Try to keep VS1053 filled
-                handlebyte_ch(getring());                         // Yes, handle it
+        }
+
+        //*******************************************************************************
+
+        if(m_datamode==VS1053_OGG){
+            if(rcount>1024) btp=1024; else btp=rcount;  // reduce chunk thereby the ringbuffer can be proper fillied
+            if(btp){
+                rcount-=btp;
+                if((m_rbrindex + btp) >= m_ringbfsiz){
+                    part=m_ringbfsiz - m_rbrindex;
+                    sdi_send_buffer(m_ringbuf+ m_rbrindex, part);
+                    m_rbrindex=0;
+                    m_rcount-=part;
+                    btp-=part;
+                }
+                if(btp){                                         // Rest to do?
+                    sdi_send_buffer(m_ringbuf+ m_rbrindex, btp); // Copy full or last part
+                    m_rbrindex+=btp;                             // Point to next free byte
+                    m_rcount-=btp;                               // Adjust number of bytes
+                }
+            } return;
+        }
+
+
+        if(m_datamode==VS1053_DATA){
+            if(rcount>1024)btp=1024;  else btp=rcount;  // reduce chunk thereby the ringbuffer can be proper fillied
+            if(count>btp){bcs=btp; count-=bcs;} else{bcs=count; count=0;}
+            if(bcs){
+              rcount-=bcs;
+                // First see if we must split the transfer.  We cannot write past the ringbuffer end.
+                if((m_rbrindex + bcs) >= m_ringbfsiz){
+                    part=m_ringbfsiz - m_rbrindex;              // Part of length to xfer
+                    sdi_send_buffer(m_ringbuf+ m_rbrindex, part);  // Copy first part
+                    m_rbrindex=0;
+                    m_rcount-=part;                             // Adjust number of bytes
+                    bcs-=part;                                  // Adjust rest length
+                }
+                if(bcs){                                        // Rest to do?
+                    sdi_send_buffer(m_ringbuf+ m_rbrindex, bcs); // Copy full or last part
+                    m_rbrindex+=bcs;                            // Point to next free byte
+                    m_rcount-=bcs;                              // Adjust number of bytes
+                }
+                if(count==0){
+                    m_datamode=VS1053_METADATA;
+                    m_firstmetabyte=true;
+                }
             }
         }
-    }
-    if(datamode == VS1053_PLAYLISTDATA){
-        if(t0+49<millis()) {
-            log_i("terminate metaline after 50ms");
-            handlebyte_ch('\n');          // no more ch form client? send lf
+        else{ //!=DATA
+            while(rcount){
+                handlebyte(m_ringbuf[m_rbrindex]);
+                if(++m_rbrindex == m_ringbfsiz){                // Increment pointer and
+                    m_rbrindex=0;                               // wrap at end
+                }
+                rcount--;
+                // call handlebyte>connecttohost can set m_rcount to zero (empty ringbuff)
+                if(m_rcount>0) m_rcount--;                   // no underrun
+                if(m_rcount==0)rcount=0; // exit this while()
+                if(m_datamode==VS1053_DATA){
+                    count=m_metaint;
+                    break;
+                }
+            }
         }
-    }
-    if(datamode == VS1053_STOPREQD){                      // STOP requested?
 
-        if(vs1053_info) vs1053_info("STOP requested\n");
-
-        stop_mp3client();                                 // Disconnect if still connected
-        mp3file.close();
-        handlebyte_ch(0, true);                           // Force flush of buffer
-        setVolume(0);                                     // Mute
-        stopSong();                                       // Stop playing
-        emptyring();                                      // Empty the ringbuffer
-        metaint=0;                                        // No metaint known now
-        datamode=VS1053_STOPPED;                          // Yes, state becomes STOPPED
-        if(vs1053_info) vs1053_info("VS1053 stopped\n");
-        delay(500);
-    }
+    } // end if(webstream)
 }
 //---------------------------------------------------------------------------------------
 void VS1053::stop_mp3client(){
-    while(client.connected())
-    {
-        if(vs1053_info) vs1053_info("Stopping client\n"); // Stop connection to host
-        client.flush();
-        client.stop();
-        delay(500);
-    }
+    int v=read_register(SCI_VOL);
+    write_register(SCI_VOL, 0);  // Mute while stopping
+//    while(client.connected())
+//    {
+//        if(vs1053_info) vs1053_info("Stopping client\n"); // Stop connection to host
+//       client.flush();
+//        client.stop();
+//        delay(500);
+//    }
     client.flush();                                       // Flush stream client
     client.stop();                                        // Stop stream client
+    write_register(SCI_VOL, v);
 }
 //---------------------------------------------------------------------------------------
 bool VS1053::connecttohost(String host){
 
     int inx;                                              // Position of ":" in hostname
-    //char*       pfs ;                                   // Pointer to formatted string
     int port=80;                                          // Port number for host
     String extension="/";                                 // May be like "/mp3" in "skonto.ls.lv:8002/mp3"
     String hostwoext;                                     // Host without extension and portnumber
+    m_f_localfile=false;
+    m_f_webstream=true;
+
     stopSong();
     stop_mp3client();                                     // Disconnect if still connected
-    emptyring();
-    localfile=false;
-    webstream=true;
 
     sprintf(sbuf, "Connect to new host: %s\n", host.c_str());
     if(vs1053_info) vs1053_info(sbuf);
 
     // initializationsequence
-    ctseen=false;                                           // Contents type not seen yet
-    metaint=0;                                              // No metaint found
-    LFcount=0;                                              // For detection end of header
-    bitrate=0;                                              // Bitrate still unknown
+    m_rcount=0;                                             // Empty ringbuff
+    m_rbrindex=0;
+    m_rbwindex=0;
+    m_ctseen=false;                                         // Contents type not seen yet
+    m_metaint=0;                                            // No metaint yet
+    m_LFcount=0;                                            // For detection end of header
+    m_bitrate=0;                                            // Bitrate still unknown
+    m_totalcount=0;                                         // Reset totalcount
+    m_metaline="";                                          // No metadata yet
+    m_icyname="";                                           // No StationName yet
+    m_bitrate=0;                                            // No bitrate yet
+    m_firstchunk=true;                                      // First chunk expected
+    m_chunked=false;                                        // Assume not chunked
     setDatamode(VS1053_HEADER);                             // Handle header
-    totalcount=0;                                           // Reset totalcount
-    metaline="";                                            // No metadata yet
-    icyname="";                                             // No StationName yet
-    firstchunk=true;                                        // First chunk expected
-    chunked=false;                                        // Assume not chunked
 
-    if(host.endsWith(".m3u")|| host.endsWith(".pls")){    // Is it an m3u or pls playlist?
-        playlist=host;                                    // Save copy of playlist URL
-        datamode=VS1053_PLAYLISTINIT;                     // Yes, start in PLAYLIST mode
-        if(playlist_num == 0){                             // First entry to play?
-            playlist_num=1;                               // Yes, set index
+    if(host.endsWith(".m3u")|| host.endsWith(".pls")){      // Is it an m3u or pls playlist?
+        m_playlist=host;                                    // Save copy of playlist URL
+        m_datamode=VS1053_PLAYLISTINIT;                     // Yes, start in PLAYLIST mode
+        if(m_playlist_num == 0){                            // First entry to play?
+            m_playlist_num=1;                               // Yes, set index
         }
-        sprintf(sbuf, "Playlist request, entry %d\n", playlist_num); // Most of the time there are zero bytes of metadata
+        sprintf(sbuf, "Playlist request, entry %d\n", m_playlist_num); // Most of the time there are zero bytes of metadata
         if(vs1053_info) vs1053_info(sbuf);
-
     }
 
 
@@ -838,8 +773,7 @@ bool VS1053::connecttohost(String host){
     }
     // In the URL there may be a portnumber
     inx=host.indexOf(":");                                // Search for separator
-    if(inx >= 0)                                          // Portnumber available?
-            {
+    if(inx >= 0){                                          // Portnumber available?
         port=host.substring(inx + 1).toInt();             // Get portnumber as integer
         hostwoext=host.substring(0, inx);                 // Host without portnumber
     }
@@ -858,8 +792,6 @@ bool VS1053::connecttohost(String host){
                 String("\r\n") +
                 String("Icy-MetaData:1\r\n") +
                 String("Connection: close\r\n\r\n"));
-
-
         return true;
     }
     sprintf(sbuf, "Request %s failed!\n", host.c_str());
@@ -876,9 +808,8 @@ bool VS1053::connecttoSD(String sdfile){
 
     stopSong();
     stop_mp3client();                                    // Disconnect if still connected
-    emptyring();
-    localfile=true;
-    webstream=false;
+    m_f_localfile=true;
+    m_f_webstream=false;
     while(sdfile[i] != 0){  //convert ISO8859-1 to ASCII
         path[j]=sdfile[i];
         if(path[j] == 228) path[j]=132; // ä
@@ -892,8 +823,8 @@ bool VS1053::connecttoSD(String sdfile){
         i++;
     }
     path[j]=0;
-    mp3title=sdfile.substring(sdfile.lastIndexOf('/') + 1, sdfile.length());
-    showstreamtitle(mp3title.c_str(), true);
+    m_mp3title=sdfile.substring(sdfile.lastIndexOf('/') + 1, sdfile.length());
+    showstreamtitle(m_mp3title.c_str(), true);
     sprintf(sbuf, "Reading file: %s\n", path);
     if(vs1053_info) vs1053_info(sbuf);
     fs::FS &fs=SD;
