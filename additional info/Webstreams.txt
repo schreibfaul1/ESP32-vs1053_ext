@@ -1,0 +1,318 @@
+﻿streams working with VS1053_ext
+
+//______________________________________________________________________
+320k streams 
+
+Organlive EU 320k                         play2.organlive.com:7000/320
+RadioMonsterFM - Schlager                 schlager.radiomonster.fm/320.mp3
+RadioMonsterFM - Tophits                  tophits.radiomonster.fm/320.mp3
+RadioMonsterFM - Evergreens               evergreens.radiomonster.fm/320.mp3
+Radio Racja Belarus                       radio2.teploe.net:8000/racja320
+Dance radio                               pool.cdn.lagardere.cz:80/dance-radio320.mp3
+SceneSatRadio                             sentinel.scenesat.com:8000/scenesatmax
+Radio Monique 963 Gold                    5.79.87.131:8963/
+AmysFM                                    94.23.222.12:8024/amysfm
+Psy Chill Zone                            air.chillout.zone:8020/radio
+Chill Out Zone                            air.chillout.zone:8000/radio
+Hi On Line Gold Radio                     mediaserv30.live-streams.nl:8000/stream
+Hi On Line Radio                          mediaserv30.live-streams.nl:8086/live
+Hi On Line World Radio                    mediaserv38.live-streams.nl:8027/live
+KSER (ogg)                                streaming.kser.org:8000/kser.ogg
+Radio Paradise - Naim exclusive           stream-dc1.radioparadise.com:80/aac-320
+ai-radio.org (ogg)                        listen.ai-radio.org:8000/320.ogg?cc=DE&now=1511557873.987&
+Soundart Radio 102.5FM                    icecast.commedia.org.uk:8000/soundart.mp3
+de-piratenfamilie                         185.10.48.127:8300/
+RadioReadymix.nl                          server-26.stream-server.nl:8522/stream
+Radio Trelleborg - MP3 High               stream.nsp.se:8000/RaTbg_MP3_Hi
+Radio SWR                                 148.251.57.185:9306/
+BluePoint Radio                           www.bluepoint-radio.de:9080
+Chatworx Radio                            chatworx-radio.de:1180/
+RTI Radio Totai International             81.169.141.17:32400
+107.8 Radio Jackie                        www.radiojackie.com:5873/
+Radio Caroline 259 Gold                   5.79.87.131:8253/
+Blur FM - Buenos Aires Argentinia         64.34.175.149:8000/blurfm03
+
+
+//______________________________________________________________________
+ogg streams
+
+RADIO1                                    stream.radioreklama.bg:80/radio1.ogg
+ENERGY                                    stream.radioreklama.bg:80/nrj_low.ogg
+RADIO 1ROCK                               stream.radioreklama.bg:80/radio1rock.ogg
+LogosRadio.info OGG 64 kb/s               ogosradio.info:8000/logosradio.ogg
+SVCS - Radio META CZ                      vm1357.cust.netio.cz:8002/live.ogg
+CSFF Live Radio                           csff.od.ua:8000/radio
+WMBG AM 740                               stream.wmbgradio.com:8000/wmbg.ogg
+The Sound of the 90s                      streaming.radiodancefloor.it:80/live.vorbis
+THE OLDIE STATION                         theoldiestation.dyndns.org:8020/stream.ogg
+KULTRADIO                                 ice.kultradio.fm:80/kult128.ogg
+1radio                                    live.pervoeradio.net:7000/live48.ogg
+Tailadon Streams - Old Time Radio         taliadon.ddns.net:8000/tpsotr
+KXLE FM 95.3 Live OGG 64 kb/s             kxleamfm.com:8000/kxlefm.ogg
+Radio Helikon                             radio.helikon.bg:9000/live_ogg
+Offshore Music Radio                      bitsmitter.com:8006/omr.ogg
+
+//______________________________________________________________________
+chunked streams
+
+Radio Kiepenkerl                          radiokiepenkerlsued.radiovonhier.de/high/stream.mp3
+Hellwig Radio West                        hellwegradiowest.radiovonhier.de/high/stream.mp3
+
+//______________________________________________________________________
+mainstreams, most 128k
+
+030-berlinfm                              vtuner.stream.laut.fm/030-berlinfm
+104.6 RTL                                 rtlberlin.hoerradar.de/rtlberlin-live-mp3-128
+105.5 Spreeradio                          stream.spreeradio.de/spree-live/mp3-128/vtuner/
+106.4 TOP FM                              mp3.topfm.c.nmdn.net/ps-topfm/livestream.mp3
+1Live, WDR Koeln                          www.wdr.de/wdrlive/media/einslive.m3u
+88vier                                    ice.rosebud-media.de:8000/88vier
+93,6 JAM FM                               stream.jam.fm/jamfm-live/mp3-128/vtuner/
+94.3 RS2 Partymix                         stream.rs2.de/rs2-relax/mp3-128/internetradio
+94.3 RS2                                  stream.rs2.de/rs2/mp3-128/internetradio
+95.5 Charivari                            rs5.stream24.net:80/stream
+98.8 KISS FM                              stream.kissfm.de/kissfm/mp3-128/internetradio
+Absolut Radio                             stream.absolutradio.de/hq/mp3-160/vtuner/
+AllgäuHIT                                 streamstat.net/play.cgi?sid=26679415&ext=.m3u
+Alpenwelle                                live.alpenwelle.de/alpenwelle128
+alsterradio                               live96.alsterradio.de/
+ANTENNE BAYERN Oldies but Goldies         mp3channels.webradio.antenne.de/oldies-but-goldies
+ANTENNE BAYERN Top 40                     www.antenne.de/webradio/channels/top-40.m3u
+ANTENNE BAYERN                            www.antenne.de/webradio/antenne.m3u
+Antenne Brandenburg vom rbb               www.antennebrandenburg.de/live.m3u
+Antenne Idar-Oberstein                    mp3.stream.antenne-io.de/
+Antenne Mainz                             www.surfmusik.de/m3u/antenne-mainz-106-6-fm,14569.m3u
+Antenne MV                                streams.antennemv.de/antennemv-live/mp3-192/vtuner/
+Antenne Niederrhein                       www.surfmusic.de/m3u/antenne-niederrhein,7222.m3u
+Antenne Niedersachsen                     stream.antenne.com/deutsch/mp3-128/stream.antenne.com/
+ANTENNE THUERINGEN                        stream.antennethueringen.de/live/mp3-192/play.m3u
+antenne1 Stuttgart                        stream.antenne1.de/stream1/livestream.mp3
+Antenne-AC                                mp3.antenneac.c.nmdn.net/ps-antenneac/livestream.mp3
+antenne-koeln                             vtuner.stream.laut.fm/antenne-koeln
+apollo radio                              streams.bcs-systems.de/apollo/live/sachsen/mp3/radioplayer/web
+baden.fm                                  badenfm.ip-streaming.net:8006/badenfm
+Bavaradio                                 streamplus16.leonex.de:15268
+Bayern 3                                  streams.br.de/bayern3_2.m3u
+Bayernwelle                               icebwso2.srv.co.at:8000/bwchg_hi
+BB Radio - Berlin Club                    streambbr.ir-media-tec.com/berlin/mp3-128/vtuner_web_mp3/
+Berliner Rundfunk                         138.201.252.6/brf_128
+BHeins                                    46.163.75.84:8000
+bigFM                                     srv05.bigstreams.de/bigfm-mp3-96
+Bremen Vier                               dl-ondemand.radiobremen.de/bremenvier.m3u
+DASDING                                   mp3-live.dasding.de/dasding_m.m3u
+delta radio                               streams.deltaradio.de/delta-live/mp3-192/streams.deltaradio.de/
+Deutschlandfunk                           st01.dlf.de/dlf/01/128/mp3/stream.mp3
+DIE NEUE 107.7                            www.surfmusik.de/m3u/die-neue-107-7-rock,16562.m3u
+die neue welle                            www.die-neue-welle.DE/dnw_128.m3u
+DONAU 3 FM                                www.surfmusik.de/m3u/donau-3-fm,6486.m3u
+egoFM                                     mp3ad.egofm.c.nmdn.net/ps-egofm_128/livestream.mp3.m3u
+ENERGY BERLIN                             185.52.127.159/de/33001/mp3_128.mp3
+extra-radio 88.0                          www.extra-radio.de/stream/live.m3u
+FEUCHT.FM                                 www.surfmusik.de/m3u/feucht-fm,18326.m3u
+fischkopp                                 streamstat.net/play.cgi?sid=28683676&ext=.m3u
+FluxFM - Live                             fluxfm.hoerradar.de/fluxfm-berlin
+Fritz vom rbb                             www.fritz.de/live.m3u
+Gong 97,1                                 webstream.gong971.de/gong971
+Hamburg ZWEI                              stream.hamburg-zwei.de/hh2-live/mp3-128/vtuner/
+harmony.fm                                mp3.harmonyfm.de/harmonyfm/hqlivestream.mp3
+Hitradio FFH                              mp3.ffh.de/radioffh/hqlivestream.mp3
+Hitradio MS One                           msone.synchron.audio/playlist.m3u
+Hitradio N1                               webstream.hitradion1.de/hitradion1
+Hitradio RT1 96,7 FM                      mp3.hitradiort1.c.nmdn.net/hitradiort1hp/livestream.mp3
+Hitradio SKW                              edge.audio.3qsdn.com/senderkw-mp3
+Hitstation.fm                             46.105.118.14:13500/
+hr3                                       hr-hr3-live.cast.addradio.de/hr/hr3/live/mp3/128/stream.mp3
+hr4                                       hr-hr4-live.cast.addradio.de/hr/hr4/live/mp3/128/stream.mp3
+JACK FM                                   tuner.jackfm.de:80/
+kick!fm                                   live.kickfm.eu:8000/
+KielFM - 101,2 Mhz                        radio.oksh.de:8000/kielfm.mp3.m3u
+KiRaKa                                    www.wdr.de/wdrlive/media/kiraka.m3u
+Klassik Radio - Live                      stream.klassikradio.de/live/mp3-128/www.klassikradio.de/
+KULTRADIO                                 ice.kultradio.fm/kult128.mp3.m3u
+LandesWelle Thueringen                    stream.landeswelle.de/lwt/mp3-192
+Life Radio - Made in Austria              94.136.28.10:8001/mia.m3u
+Magic                                     icy-e-bz-03-gos.sharp-stream.com/magic1054.mp3
+MAXX FM                                   mp3ad.radiob2maxxfm.c.nmdn.net/radiob2maxxfm/livestream.mp3
+MDR JUMP                                  avw.mdr.de/streams/284320-0_mp3_high.m3u
+MDR SPUTNIK                               avw.mdr.de/streams/284330-0_mp3_high.m3u
+MDR THUERINGEN                            avw.mdr.de/streams/284300-0_mp3_high.m3u
+MEGA RADIO                                mega.syntegic.net:8000/mega.mp3
+N JOY                                     www.ndr.de/resources/metadaten/audio/m3u/n-joy.m3u
+NDR1 Radio MV                             www.ndr.de/resources/metadaten/audio/m3u/ndr1radiomv.m3u
+Neckaralb Live                            www.surfmusik.de/m3u/neckaralb-live,18555.m3u
+Ostseewelle Hitradio                      edge.live.mp3.mdn.newmedia.nacamar.net/ostseewellelive/livestream.mp3
+planet radio iTunes hot 40                mp3.planetradio.de/planetradio/hqlivestream.mp3
+Power Radio                               85.25.217.22:8020/stream
+PRIMATON                                  mp3ad.primaton.c.nmdn.net/primaton/livestream4hi.mp3?
+R.SA Sachsen                              streams.rsa-sachsen.de/100/mp3-128/streams.rsa-sachsen.de/
+R.SH Sylt                                 streams.rsh.de/rsh-sylt/mp3-192/mediaplayer
+R.SH                                      streams.rsh.de/rsh-live/mp3-192/vtuner/
+Radio 21 Hannover.FM                      188.94.97.92:80/lnn_hannoverfm.mp3
+Radio 7 Aalen                             stream.radio7.de/stream9/livestream.mp3
+Radio 8                                   stream.radio8.de:8000/live
+Radio Arabella                            rs6.stream24.net/stream.aac
+RADIO AUGSBURG                            streamplus36.leonex.de:15440
+radio B2 Berlin-Brandenburg               mp3ad.radiob2.c.nmdn.net/ps-radiob2regional/livestream.mp3
+Radio Bamberg                             rs1.stream24.net:80/stream
+Radio Berg                                edge.live.mp3.mdn.newmedia.nacamar.net/radioberg/livestream.mp3
+RADIO BOB!                                streams.radiobob.de/bob-live/mp3-192/vtuner/
+Radio Bonn Rhein-Sieg                     ga-stream01.ga-bonn.de/128.mp3
+Radio Brocken                             stream.radiobrocken.de/live/mp3-128/radioplayerhp/play.m3u
+Radio Cottbus                             edge.audio.3qsdn.com/5708_BKtjwVvWF3NmzGH
+Radio Dresden                             streaming.radiodresden.de/radio-dresden_simulcast_128k_mp3
+Radio Duisburg                            mp3.l.nmdn.net:80/ps-radioduisburg/livestream.mp3
+Radio Eins                                webstream.radioeins.com/radio-eins.mp3
+Radio Erzgebirge                          streaming.radioerzgebirge.de/radio-erzgebirge_simulcast_128k_mp3
+Radio F                                   webradio.radiof.de:8000
+Radio Fantasy                             stream.fantasy.de/fantasy.mp3
+radio ffn                                 stream.ffn.de/ffn/mp3-192/
+RADIO FLENSBURG                           www.surfmusik.de/m3u/radio-flensburg,9276.m3u
+Radio Galaxy                              mp3ad.radiogalaxy.c.nmdn.net/ps-radiogalaxy/livestream.mp3
+radio Guetersloh                          mp3.radioguetersloh.c.nmdn.net/ps-radioguetersloh/livestream.mp3
+Radio Hamburg                             stream.radiohamburg.de/rhh-live/mp3-128/vtuner/
+radio Herford                             mp3.radioherford.c.nmdn.net/ps-radioherford/livestream.mp3
+Radio Ingolstadt                          www.funkhaus-ingolstadt.de/streams/radioin-mp3.m3u
+Radio Kaarst                              46.105.118.14:8800
+Radio M4                                  144.76.12.86:4444/m4-web-hq
+Radio Mainwelle                           webstream.mainwelle.de/radio-mainwelle.mp3
+Radio MK Nord                             radiomknord.radiovonhier.de:8000/stream_high.mp3
+Radio Neandertal                          mp3.l.nmdn.net:80/ps-neandertal/livestream.mp3
+Radio Nienburg Mittelweser                www.surfmusik.de/m3u/radio-mittelweser-103-3-fm,15245.m3u
+Radio Nora                                stream.hoerradar.de/nora128.m3u
+Radio Nordseewelle                        stream.radio-nordseewelle.de/live/mp3-192/vtuner/
+Radio Okerwelle 104.6                     www.surfmusik.de/m3u/radio-okerwelle,988.m3u
+Radio Ostfriesland                        www.surfmusik.de/m3u/radio-ostfriesland,9899.m3u
+Radio Paradiso                            klang.center:8080/paradiso.bln.mp3
+Radio Plassenburg 101,6                   rs15.stream24.net/stream
+Radio Potsdam                             mp3.radiopotsdam.c.nmdn.net/ps-radiopotsdam/livestream.mp3
+Radio Primavera                           mp3ad.radioprimavera.c.nmdn.net/fs_radioprimavera/livestream.mp3
+Radio PSR                                 streams.radiopsr.de/psr-live/mp3-192/streams.radiopsr.de/
+Radio Regenbogen                          scast.regenbogen.de/rr-karlsruhe-128-mp3
+Radio Rüsselsheim                         www.radio-r.net:8000/radio-r
+radio SAW                                 stream.radiosaw.de/
+Radio Seefunk - RSF                       webradio.radio-seefunk.de:8000
+Radio TEDDY                               78.47.119.109:8000/intro.radioteddy.mp3
+Radio Ton                                 live.radioton.de/rt-live-hn.m3u
+Radio Trausnitz                           mp3.l.nmdn.net:80/ps-radiotrausnitz/livestream.mp3
+RADIO VHR                                 live.radio-vhr.de/radiovhr.mp3.m3u
+RADIO WMW                                 mms.hoerradar.de/wmw128k
+Radio Wuppertal                           mp3.l.nmdn.net:80/ps-radiowuppertal/livestream.mp3
+RADIO21 - 104.1 Oldenburg                 188.94.97.91/radio21_oldenburg.mp3
+Radio38 Braunschweig                      stream.radio38.de/bs/mp3-128/stream.radio38.de/play.m3u
+radioeins vom rbb                         www.radioeins.de/live.m3u
+radio-ilmwelle                            www.surfmusik.de/m3u/radio-ilmwelle,17933.m3u
+ROCK ANTENNE                              www.rockantenne.de/webradio/rockantenne.m3u
+RPR1.Mainz                                streams.rpr1.de/mz-128-mp3
+Schwarzwald Radio                         str0.creacast.com/schwarzwaldradio.m3u
+SR1                                       streaming01.sr-online.de/sr1_2.m3u
+SR3                                       streaming01.sr-online.de/sr3_2.m3u
+STAR FM Maximum Rock Berlin               85.25.43.55:80/berlin.mp3
+STAR SAT RADIO                            mp3ad.radiob2starsat.c.nmdn.net/ps-radiob2starsat/livestream.mp3
+sunshine live                             www.surfmusik.de/m3u/radio-sunshine-live,917.m3u
+SWR1 BW                                   mp3-live.swr.de/swr1bw_m.m3u
+SWR2                                      mp3-live.swr.de/swr2_m.m3u
+SWR3                                      mp3-live.swr3.de/swr3_m.m3u
+SWR4 BW                                   mp3-live.swr.de/swr4bw_m.m3u
+Syltfunk                                  www.surfmusik.de/m3u/syltfunk-radio,18227.m3u
+TIDE 96,0                                 www.surfmusik.de/m3u/tide-96-0,10289.m3u
+UnserDing                                 streaming01.sr-online.de/unserding_1.m3u
+VOGTLAND RADIO                            vogtlandradio.mp3.green.ch/vogtland_128k_mp3
+Welle Niederrhein                         mp3.l.nmdn.net:80/ps-wellenr/livestream.mp3
+Antenne Tirol Livestream                  streamplus30.leonex.de:14840/listen.pls
+ANTENNE VORARLBERG HD                     webradio.antennevorarlberg.at/live.m3u
+Hitradio Ö3                               mp3stream7.apasf.apa.at:8000/
+Hitradio OE3                              mp3stream7.apasf.apa.at:8000/listen.pls
+Kronehit Yam                              onair-ha1.krone.at/kronehit-yam.mp3.m3u
+Kronehit                                  onair.krone.at/kronehit.mp3.m3u
+Life Radio                                94.136.28.10:8000/liferadio.m3u
+OE1                                       mp3stream3.apasf.apa.at/listen.pls
+ORF FM4                                   mp3stream1.apasf.apa.at:8000
+ORF Radio Salzburg                        194.232.200.147:8000/listen.pls
+ORF Tirol                                 mp3stream10.apasf.apa.at:8000/
+Radio 24                                  streamplus14.leonex.de:24954/listen.pls
+Radio Burgenland                          194.232.200.146:8000/listen.pls
+Radio Oberoesterreich                     194.232.200.148/listen.pls
+Radio Steiermark                          mp3stream9.apasf.apa.at:8000/listen.pls
+Radio Technikum                           fc.macjingle.net:8200/listen.pls
+Radio Wien                                mp3stream2.apasf.apa.at:8000/
+U1 Tirol                                  188.138.1.125:24332/listen.pls
+Unzmarkt-Frauenburg LIVE                  www.cartwall.at:7320/listen.pls
+WELLE 1 Salzburg                          live.welle1.at:8128/listen.pls
+Planet 105                                radio.netstream.ch/planet105_128k_mp3.m3u
+Radio 1                                   radio.netstream.ch/128k.m3u
+Radio 24 Zürich                           icecast.radio24.ch/radio24.m3u
+Radio 4 TNG                               radio4tng.ice.infomaniak.ch/radio4tng-live-web.mp3.m3u
+Radio FM1                                 radiofm1.ice.infomaniak.ch/radiofm1-128.mp3
+Radio Inside                              fra.radiostream.de:37499/listen.pls
+Radio Swiss Pop                           stream.srg-ssr.ch/rsp/mp3_128.m3u
+RADIO TOP TWO                             icecast.radiotop.ch/toptwo_128.m3u
+RADIO TOP                                 icecast.radiotop.ch/radiotop_128.m3u
+Radio Zuerisee                            mp3.radio.ch/radiozuerisee128k.m3u
+SRF 1                                     stream.srg-ssr.ch/drs1/mp3_128.m3u
+SRF 2                                     stream.srg-ssr.ch/drs2/mp3_128.m3u
+SRF 3                                     stream.srg-ssr.ch/drs3/mp3_128.m3u
+SRF Musikwelle                            stream.srg-ssr.ch/drsmw/mp3_128.m3u
+BelgianOldiesRadio                        listen.radionomy.com/niceoldies
+BRF Radio 1                               streaming.brf.be/brf1-high.mp3
+BRF Radio 2                               streaming.brf.be:80/brf2-high.mp3
+RAI Südtirol                              radiobzlive.rai.it/RAIBZ_Livestream
+Südtirol1                                 str2.creacast.com/sudtirol1a.m3u
+bbc_1xtra                                 bbcmedia.ic.llnwd.net/stream/bbcmedia_radio1xtra_mf_p
+bbc_6music                                bbcmedia.ic.llnwd.net/stream/bbcmedia_6music_mf_p
+bbc_london                                bbcmedia.ic.llnwd.net/stream/bbcmedia_lrldn_mf_p
+bbc_radio_five_live                       bbcmedia.ic.llnwd.net/stream/bbcmedia_radio5live_mf_p
+bbc_radio_four_extra                      bbcmedia.ic.llnwd.net/stream/bbcmedia_radio4extra_mf_p
+bbc_radio_fourfm                          bbcmedia.ic.llnwd.net/stream/bbcmedia_radio4fm_mf_p
+bbc_radio_gloucestershire                 bbcmedia.ic.llnwd.net/stream/bbcmedia_lrgloucs_mf_p
+bbc_radio_one                             bbcmedia.ic.llnwd.net/stream/bbcmedia_radio1_mf_p
+bbc_radio_scotland_fm                     bbcmedia.ic.llnwd.net/stream/bbcmedia_scotlandfm_mf_p
+bbc_radio_three                           bbcmedia.ic.llnwd.net/stream/bbcmedia_radio3_mf_p
+bbc_radio_two                             bbcmedia.ic.llnwd.net/stream/bbcmedia_radio2_mf_p
+bbc_radio_wales_fm                        bbcmedia.ic.llnwd.net/stream/bbcmedia_walesmw_mf_p
+Capital London                            media-sov.musicradio.com:80/CapitalMP3
+Fun Kids Radio                            www.funkidslive.com/player/aggregator-96-mp3.m3u
+Gold London                               media-ice.musicradio.com/Gold.m3u
+Heart London                              media-ice.musicradio.com/HeartLondonMP3
+Imagine FM                                webradio.radiomonitor.com/stream/Imagine
+LBC London                                media-ice.musicradio.com/LBCLondon.m3u
+Manx Radio AM                             edge-event-05-gos1.sharp-stream.com:80/manxradiofm.mp3
+Radio Caroline                            sc3.radiocaroline.net:8030/listen.pls
+Radio X London                            media-ice.musicradio.com/RadioXLondon.m3u
+Stray  FM                                 str1.sad.ukrd.com/stray.m3u
+Sunshine Radio                            icecast.easystream.co.uk:8000/herefordFM
+45Tours                                   listen.radionomy.com/45tours
+ALLZIC - Annees 80                        allzic08.ice.infomaniak.ch/allzic08.mp3
+ALLZIC - Annees 90                        allzic24.ice.infomaniak.ch/allzic24.mp3
+Alouette                                  alouette.ice.infomaniak.ch:80/alouette-high.mp3
+Alpes 1 Gap PREMIUM                       alpes1gap.ice.infomaniak.ch/alpes1gap-high.mp3
+CFM FRENCHIE                              185.52.127.162/fr/30213/aac_64.mp3
+CFM                                       stric6.streamakaci.com/cfmradio.mp3
+Chante France                             stream1.chantefrance.com/Chante_France.m3u
+europe 1                                  e1-live-mp3-128.scdn.arkena.com/europe1.mp3
+EVASION                                   www.listenlive.eu/evasionfm.m3u
+France1Max                                listen.radionomy.com/france1max.m3u
+M2 CHILLOUT                               www.m2radio.fr/pls/m2chillout.m3u
+M2 FUNK                                   www.m2radio.fr/pls/m2funk.m3u
+M2 HIT                                    www.m2radio.fr/pls/m2hit.m3u
+M2 Rock                                   www.m2radio.fr/pls/m2rock.m3u
+MFM Radio - comedies musicales            mfm-wr05.ice.infomaniak.ch/mfm-wr05.mp3
+MFM Radio - Duos                          mfm-wr06.ice.infomaniak.ch/mfm-wr06.mp3
+MFM Radio - Generiques TV                 mfm-wr14.ice.infomaniak.ch/mfm-wr14.mp3
+MFM Radio - Live                          mfm-live.ice.infomaniak.ch/mfm-live.mp3
+MFM Radio - PREMIUM                       mfm.ice.infomaniak.ch/mfm-128.mp3
+MFM Radio - Tubes de grenier              mfm-wr3.ice.infomaniak.ch/mfm-wr3-128.mp3
+MusicOnlyFM                               listen.radionomy.com/musiconly-fm
+Nostalgie Chanson Francaises              broadcast.infomaniak.net/nostalgiechansonfrancaise-128.mp3
+Radio Grenouille                          live.radiogrenouille.com/live.m3u
+RFI Monde 64                              live02.rfi.fr/rfimonde-64.mp3
+RFM 100% Francais                         rfm-wr11-mp3-128.scdn.arkena.com/rfm.mp3
+RFM Cinema                                rfm-wr15-mp3-128.scdn.arkena.com/rfm.mp3
+RFM Collector                             www.listenlive.eu/rfmcollector.m3u
+RFM New Wave                              rfm-wr12-mp3-128.scdn.arkena.com/rfm.mp3
+RFM Night Fever                           www.listenlive.eu/rfmnightfever.m3u
+rfm                                       www.listenlive.eu/rfm.m3u
+RJMFrench                                 listen.radionomy.com/rjm-french.m3u
+Romantic Dreams                           streaming206.radionomy.com:80/RomanticDreams
+RTL [MP3 192]                             streaming.radio.rtl.fr/rtl-1-48-192
+RTL2 [MP3 192]                            streaming.radio.rtl.fr/rtl2-1-48-192.m3u
+Virgin RADIO                              mp3lg4.tdf-cdn.com/9243/lag_164753.mp3
