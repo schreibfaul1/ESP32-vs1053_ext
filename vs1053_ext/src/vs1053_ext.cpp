@@ -302,9 +302,18 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         }
         strcpy(p1, p2);                                	// Shift 2nd part of title 2 or 3 places
     }
+    if(vs1053_showstreamtitle) vs1053_showstreamtitle(streamtitle);
+    for(int i=0; i<(sizeof(streamtitle)); i++){
+        if(streamtitle[i]=='\n') streamtitle[i]=' '; //remove all LF within stramtitle
+        if(streamtitle[i]=='\r') streamtitle[i]=' '; //remove all CR within stramtitle
+    }
     sprintf(sbuf, "Streamtitle: %s\n", streamtitle);
     if(vs1053_info) vs1053_info(sbuf);
-    if(vs1053_showstreamtitle) vs1053_showstreamtitle(streamtitle);
+
+
+
+
+
 }
 //---------------------------------------------------------------------------------------
 void VS1053::handlebyte(uint8_t b){
@@ -313,6 +322,7 @@ void VS1053::handlebyte(uint8_t b){
     static String ct;                                      		// Contents type
     static String host;
     int inx;                                               		// Pointer in metaline
+    static boolean f_entry=false;                               // entryflag for asx playlist
 
     if(m_datamode == VS1053_HEADER)                          	// Handle next byte of MP3 header
     {
@@ -327,6 +337,7 @@ void VS1053::handlebyte(uint8_t b){
             if(chkhdrline(m_metaline.c_str())){              	// Reasonable input?
                 lcml=m_metaline;                             	// Use lower case for compare
                 lcml.toLowerCase();
+                lcml.trim();
                 sprintf(sbuf, "%s\n", m_metaline.c_str());
                 if(vs1053_info) vs1053_info(sbuf);         		// Yes, Show it
                 if(lcml.indexOf("content-type:") >= 0){     	// Line with "Content-Type: xxxx/yyy"
@@ -350,8 +361,12 @@ void VS1053::handlebyte(uint8_t b){
                 }
                 else if(lcml.startsWith("location:")){
                     host=m_metaline.substring(lcml.indexOf("http://")+7,lcml.length());// use metaline instead lcml
+                    if(lcml.indexOf("http://")==-1){ // can be https
+                        host=m_metaline.substring(lcml.indexOf("https://")+8,lcml.length());// use metaline instead lcml
+                    }
                     if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
-                    log_i("redirect to host %s", host.c_str());
+                    sprintf(sbuf, "redirect to new host %s\n", host.c_str());
+                    if(vs1053_info) vs1053_info(sbuf);
                     connecttohost(host);
                 }
                 else if(lcml.startsWith("icy-br:")){
@@ -374,13 +389,13 @@ void VS1053::handlebyte(uint8_t b){
                 else if(lcml.startsWith("transfer-encoding:")){
                     // Station provides chunked transfer
                     if(m_metaline.endsWith("chunked")){
-                        m_chunked=true;                      	// Remember chunked transfer mode
-                        log_i("chunked data transfer");
+                        m_chunked=true;
+                        if(vs1053_info) vs1053_info("chunked data transfer\n");
                         m_chunkcount=0;                      	// Expect chunkcount in DATA
                     }
                 }
                 else{
-                    if(vs1053_info) vs1053_info(m_metaline.c_str()); // all other
+                    // all other
                 }
             }
             m_metaline="";                             			// Reset this line
@@ -442,6 +457,7 @@ void VS1053::handlebyte(uint8_t b){
     {
         // We are going to use metadata to read the lines from the .m3u file
         // Sometimes this will only contain a single line
+        f_entry=false;                                          // no entry found yet (asx playlist)
         m_metaline="";                                       	// Prepare for new line
         m_LFcount=0;                                         	// For detection end of header
         m_datamode=VS1053_PLAYLISTHEADER;                    	// Handle playlist data
@@ -544,7 +560,37 @@ void VS1053::handlebyte(uint8_t b){
                     log_i("connecttohost %s", host.c_str());
                     connecttohost(m_plsURL); 		// Connect to it
                 }
-            }
+            }//pls
+            if(m_playlist.endsWith("asx")){
+                String ml=m_metaline;
+                ml.toLowerCase();
+                if(ml.indexOf("<entry>")>=0) f_entry=true;     // found entry
+                if(f_entry){
+                    if(ml.indexOf("ref href")>0){
+                        inx=ml.indexOf("http://");
+                        if(inx>0){
+                            m_plsURL=m_metaline.substring(inx + 7); // Yes, remove it
+                            if(m_plsURL.indexOf('"')>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf('"')); // remove rest
+                            // Now we have an URL for a .mp3 file or stream in host.
+                            m_f_plsFile=true;
+                        }
+                    }
+                    if(ml.indexOf("<title>")>=0){
+                        m_plsStationName=m_metaline.substring(7);
+                        if(m_plsURL.indexOf('<')>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf('<')); // remove rest
+                        if(vs1053_showstation) vs1053_showstation(m_plsStationName.c_str());
+                        sprintf(sbuf, "StationName: %s\n", m_plsStationName.c_str());
+                        if(vs1053_info) vs1053_info(sbuf);
+                        m_f_plsTitle=true;
+                    }
+                }//entry
+                m_metaline="";
+                if(m_f_plsFile && m_f_plsTitle){   //we have both StationName and StationURL
+                    m_f_plsFile=false; m_f_plsTitle=false;
+                    //log_i("connecttohost %s", host.c_str());
+                    connecttohost(m_plsURL);        // Connect to it
+                }
+            }//asx
         }
         else
         {
@@ -604,19 +650,16 @@ void VS1053::loop(){
                 handlebyte('\n');                           // send LF
             }
         }
-
         if(m_chunked==false){rcount=m_rcount;}
         else{
             while(m_rcount){
-                if((m_chunkcount+rcount) == 0){             // Expecting a new chunkcount?
+                if((m_chunkcount+rcount) == 0|| m_firstchunk){             // Expecting a new chunkcount?
                     uint8_t b =m_ringbuf[m_rbrindex];
-                    if(++m_rbrindex == m_ringbfsiz){        // Increment pointer and
-                        m_rbrindex=0;                       // wrap at end
-                    }
-                    m_rcount--;
                     if(b=='\r'){}
                     else if(b=='\n'){
                         m_chunkcount=chunksize;
+                        m_firstchunk=false;
+                        rcount=0;
                         chunksize=0;
                     }
                     else{
@@ -625,6 +668,10 @@ void VS1053::loop(){
                         if(b > 9) b = b - 7;                        // Translate A..F to 10..15
                         chunksize=(chunksize << 4) + b;
                     }
+                    if(++m_rbrindex == m_ringbfsiz){        // Increment pointer and
+                        m_rbrindex=0;                       // wrap at end
+                    }
+                    m_rcount--;
 
                 }
                 else break;
@@ -699,6 +746,7 @@ void VS1053::loop(){
                 if(m_rcount==0)rcount=0; // exit this while()
                 if(m_datamode==VS1053_DATA){
                     count=m_metaint;
+                    if(m_metaint==0) m_datamode=VS1053_OGG; // is likely no ogg but no metadata, can be mms
                     break;
                 }
             }
@@ -753,7 +801,9 @@ bool VS1053::connecttohost(String host){
     m_chunked=false;                                        // Assume not chunked
     setDatamode(VS1053_HEADER);                             // Handle header
 
-    if(host.endsWith(".m3u")|| host.endsWith(".pls")){      // Is it an m3u or pls playlist?
+    if(host.endsWith(".m3u")||
+            host.endsWith(".pls")||
+                 host.endsWith("asx")){                     // Is it an m3u or pls or asx playlist?
         m_playlist=host;                                    // Save copy of playlist URL
         m_datamode=VS1053_PLAYLISTINIT;                     // Yes, start in PLAYLIST mode
         if(m_playlist_num == 0){                            // First entry to play?
@@ -765,17 +815,17 @@ bool VS1053::connecttohost(String host){
 
 
     // In the URL there may be an extension, like noisefm.ru:8000/play.m3u&t=.m3u
-    inx=host.indexOf("/");                                // Search for begin of extension
-    if(inx > 0){                                           // Is there an extension?
-        extension=host.substring(inx);                    // Yes, change the default
-        hostwoext=host.substring(0, inx);                 // Host without extension
+    inx=host.indexOf("/");                                  // Search for begin of extension
+    if(inx > 0){                                            // Is there an extension?
+        extension=host.substring(inx);                      // Yes, change the default
+        hostwoext=host.substring(0, inx);                   // Host without extension
 
     }
     // In the URL there may be a portnumber
-    inx=host.indexOf(":");                                // Search for separator
-    if(inx >= 0){                                          // Portnumber available?
-        port=host.substring(inx + 1).toInt();             // Get portnumber as integer
-        hostwoext=host.substring(0, inx);                 // Host without portnumber
+    inx=host.indexOf(":");                                  // Search for separator
+    if(inx >= 0){                                           // Portnumber available?
+        port=host.substring(inx + 1).toInt();               // Get portnumber as integer
+        hostwoext=host.substring(0, inx);                   // Host without portnumber
     }
     sprintf(sbuf, "Connect to %s on port %d, extension %s\n",
             hostwoext.c_str(), port, extension.c_str());
