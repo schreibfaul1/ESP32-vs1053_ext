@@ -15,6 +15,7 @@ vs1053_info &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp
 #include "Arduino.h"
 #include <SPI.h>
 #include <WiFi.h>
+//#include <WiFiClientSecure.h> // replace WiFi.h if playlist comes from https-URL
 #include "vs1053_ext.h"
 
 // Digital I/O used
