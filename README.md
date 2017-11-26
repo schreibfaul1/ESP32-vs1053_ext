@@ -2,8 +2,9 @@
 With this class You can easily build a MiniWebRadio in Adruino or Eclipse SDK.
 I have found the Originalcode by EdZelf ESP32 Webradio.
 The code is extended with a WiFi-client. This library can play many radiostations up to 320kb/s.
-Chunked data transfer is supported. Playlists can be m3u or pls, dataformat can be mp3, aac, or ogg.
-Also it can play mp3-files.<br>
+Chunked data transfer is supported. Playlists can be m3u, pls or asx, dataformat can be mp3, wma, aac, or ogg,
+asx playlists must contains only audio but no additional videodata.
+Also it can play mp3-files from SD Card.<br>
 The class provides optional events:<br>
 vs1053_showstreaminfo &nbsp;&nbsp;&nbsp; Shows th connexted URL<br>
 vs1053_showstreamtitle &nbsp;&nbsp;&nbsp; The played title<br>
@@ -69,6 +70,14 @@ void vs1053_showstreamtitle(const char *info){      // called from vs1053
 void vs1053_showstreaminfo(const char *info){       // called from vs1053
     Serial.print("STREAMINFO:  ");
     Serial.print(info);                             // Show streaminfo
+}
+void vs1053_eof_mp3(const char *info){              // called from vs1053
+//    Serial.print("vs1053_eof: ");
+//    Serial.print(info);                           // end of mp3 file (filename)
+}
+void vs1053_bitrate(const char *br){		    // called from vs1053
+//    Serial.print("BITRATE: ");
+//    Serial.println(br);                           // bitrate of current stream
 }
 ```
 
