@@ -72,12 +72,12 @@ void vs1053_showstreaminfo(const char *info){       // called from vs1053
     Serial.print(info);                             // Show streaminfo
 }
 void vs1053_eof_mp3(const char *info){              // called from vs1053
-//    Serial.print("vs1053_eof: ");
-//    Serial.print(info);                           // end of mp3 file (filename)
+      Serial.print("vs1053_eof: ");
+      Serial.print(info);                           // end of mp3 file (filename)
 }
 void vs1053_bitrate(const char *br){		    // called from vs1053
-//    Serial.print("BITRATE: ");
-//    Serial.println(br);                           // bitrate of current stream
+      Serial.print("BITRATE: ");
+      Serial.println(br);                           // bitrate of current stream
 }
 ```
 
