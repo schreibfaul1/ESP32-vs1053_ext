@@ -361,9 +361,6 @@ void VS1053::handlebyte(uint8_t b){
                 }
                 else if(lcml.startsWith("location:")){
                     host=m_metaline.substring(lcml.indexOf("http://")+7,lcml.length());// use metaline instead lcml
-                    if(lcml.indexOf("http://")==-1){ // can be https
-                        host=m_metaline.substring(lcml.indexOf("https://")+8,lcml.length());// use metaline instead lcml
-                    }
                     if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
                     sprintf(sbuf, "redirect to new host %s\n", host.c_str());
                     if(vs1053_info) vs1053_info(sbuf);
@@ -563,15 +560,15 @@ void VS1053::handlebyte(uint8_t b){
             }//pls
             if(m_playlist.endsWith("asx")){
                 String ml=m_metaline;
-                ml.toLowerCase();
-                if(ml.indexOf("<entry>")>=0) f_entry=true;     // found entry
+                ml.toLowerCase();                               // use lowercases
+                if(ml.indexOf("<entry>")>=0) f_entry=true;      // found entry tag (returns -1 if not found)
                 if(f_entry){
                     if(ml.indexOf("ref href")>0){
                         inx=ml.indexOf("http://");
                         if(inx>0){
                             m_plsURL=m_metaline.substring(inx + 7); // Yes, remove it
                             if(m_plsURL.indexOf('"')>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf('"')); // remove rest
-                            // Now we have an URL for a .mp3 file or stream in host.
+                            // Now we have an URL for a stream in host.
                             m_f_plsFile=true;
                         }
                     }
@@ -594,28 +591,29 @@ void VS1053::handlebyte(uint8_t b){
         }
         else
         {
-            m_metaline+=(char)b;         			// Normal character, add it to metaline
+            m_metaline+=(char)b;         			        // Normal character, add it to metaline
         }
         return;
     }
 }
 //---------------------------------------------------------------------------------------
 uint16_t VS1053::ringused(){
-    return (m_rcount);                                 // Free space available
+    return (m_rcount);                                      // Free space available
 }
 //---------------------------------------------------------------------------------------
 void VS1053::loop(){
 
     uint16_t part=0;                                        // part at the end of the ringbuffer
     uint16_t bcs=0;                                         // bytes can current send
-    int16_t  res=0;                                         // number of bytes getting from client
-    uint16_t btp=0;                                         // bytes to play
-    static uint16_t rcount=0;                               // max bytes handover to the player
     uint16_t maxchunk=0x1000;                               // max number of bytes to read, 4096d is enough
-    uint32_t  av=0;                                         // available in stream
-    static int32_t  count=0;                                // bytecounter between metadata
+    uint16_t btp=0;                                         // bytes to play
+    int16_t  res=0;                                         // number of bytes getting from client
+    uint32_t av=0;                                          // available in stream (uin16_t is to small by playing from SD)
+    static uint16_t rcount=0;                               // max bytes handover to the player
     static uint16_t chunksize=0;                            // Chunkcount read from stream
+    static uint16_t count=0;                                // bytecounter between metadata
 
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_localfile){                                      // Playing file from SD card?
          av=mp3file.available();                            // Bytes left in file
          if(av < maxchunk) maxchunk=av;                     // Reduce byte count for this mp3loop()
@@ -639,8 +637,10 @@ void VS1053::loop(){
             part=m_ringbfsiz - m_rbwindex;                  // Part of length to xfer
             if(part>m_ringspace)part=m_ringspace;
             res=client.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
-            m_rcount+=res;
-            m_rbwindex+=res;
+            if(res>0){
+                m_rcount+=res;
+                m_rbwindex+=res;
+            }
             if(m_rbwindex==m_ringbfsiz) m_rbwindex=0;
         }
 
@@ -746,7 +746,7 @@ void VS1053::loop(){
                 if(m_rcount==0)rcount=0; // exit this while()
                 if(m_datamode==VS1053_DATA){
                     count=m_metaint;
-                    if(m_metaint==0) m_datamode=VS1053_OGG; // is likely no ogg but no metadata, can be mms
+                    if(m_metaint==0) m_datamode=VS1053_OGG; // is likely no ogg but a stream without metadata, can be mms
                     break;
                 }
             }
@@ -800,6 +800,8 @@ bool VS1053::connecttohost(String host){
     m_firstchunk=true;                                      // First chunk expected
     m_chunked=false;                                        // Assume not chunked
     setDatamode(VS1053_HEADER);                             // Handle header
+
+    if(host.startsWith("http://")) host=host.substring(7);
 
     if(host.endsWith(".m3u")||
             host.endsWith(".pls")||

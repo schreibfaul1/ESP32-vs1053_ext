@@ -5,6 +5,7 @@
 #include "Arduino.h"
 #include "SPI.h"
 #include "WiFi.h"
+//#include <WiFiClientSecure.h>
 #include "SD.h"
 #include "FS.h"
 
@@ -27,7 +28,7 @@ extern __attribute__((weak)) void vs1053_bitrate(const char*);
 class VS1053
 {
   private:
-	WiFiClient client;                  			// An instance of the client
+    WiFiClient client;                  			// An instance of the client
 	File mp3file;
   private:
 	uint8_t       cs_pin ;                        	// Pin where CS line is connected
