@@ -183,7 +183,7 @@ Radio Bonn Rhein-Sieg                     addrad.io/444z4ws
 Radio Brocken                             stream.radiobrocken.de/live/mp3-128/radioplayerhp/play.m3u
 Radio Cottbus                             edge.audio.3qsdn.com/5708_BKtjwVvWF3NmzGH
 Radio Dresden                             streaming.radiodresden.de/radio-dresden_simulcast_128k_mp3
-Radio Duisburg                            radioduisburg.cast.addradio.de/radioduisburg/simulcast/high/stream.mp3?ar-purpose=web&ar-distributor=f0b7
+Radio Duisburg                            radioduisburg.cast.addradio.de/radioduisburg/simulcast/high/stream.mp3
 Radio Eins                                webstream.radioeins.com/radio-eins.mp3
 Radio Erzgebirge                          streaming.radioerzgebirge.de/radio-erzgebirge_simulcast_128k_mp3
 Radio F                                   webradio.radiof.de:8000
