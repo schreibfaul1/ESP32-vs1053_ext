@@ -144,7 +144,7 @@ die neue welle                            www.die-neue-welle.DE/dnw_128.m3u
 DONAU 3 FM                                www.surfmusik.de/m3u/donau-3-fm,6486.m3u
 egoFM                                     mp3ad.egofm.c.nmdn.net/ps-egofm_128/livestream.mp3.m3u
 ENERGY BERLIN                             185.52.127.159/de/33001/mp3_128.mp3
-extra-radio 88.0                          www.extra-radio.de/stream/live.m3u
+extra-radio 88.0                          www.radionetz.de:8000/extra-radio.mp3
 FEUCHT.FM                                 www.surfmusik.de/m3u/feucht-fm,18326.m3u
 fischkopp                                 streamstat.net/play.cgi?sid=28683676&ext=.m3u
 FluxFM - Live                             fluxfm.hoerradar.de/fluxfm-berlin
