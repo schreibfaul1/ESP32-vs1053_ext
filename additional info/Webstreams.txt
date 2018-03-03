@@ -146,7 +146,7 @@ egoFM                                     mp3ad.egofm.c.nmdn.net/ps-egofm_128/li
 ENERGY BERLIN                             185.52.127.159/de/33001/mp3_128.mp3
 extra-radio 88.0                          www.radionetz.de:8000/extra-radio.mp3
 FEUCHT.FM                                 www.surfmusik.de/m3u/feucht-fm,18326.m3u
-fischkopp                                 streamstat.net/play.cgi?sid=28683676&ext=.m3u
+fischkopp                                 fischkopp.stream.laut.fm/fischkopp?ref=vtuner
 FluxFM - Live                             fluxfm.hoerradar.de/fluxfm-berlin
 Fritz vom rbb                             www.fritz.de/live.m3u
 Gong 97,1                                 webstream.gong971.de/gong971
