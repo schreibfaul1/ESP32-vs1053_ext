@@ -153,7 +153,7 @@ Gong 97,1                                 webstream.gong971.de/gong971
 Hamburg ZWEI                              stream.hamburg-zwei.de/hh2-live/mp3-128/vtuner/
 harmony.fm                                mp3.harmonyfm.de/harmonyfm/hqlivestream.mp3
 Hitradio FFH                              mp3.ffh.de/radioffh/hqlivestream.mp3
-Hitradio MS One                           msone.synchron.audio/playlist.m3u
+Hitradio MS One                           stream.msone.de:9000
 Hitradio N1                               webstream.hitradion1.de/hitradion1
 Hitradio RT1 96,7 FM                      mp3.hitradiort1.c.nmdn.net/hitradiort1hp/livestream.mp3
 Hitradio SKW                              edge.audio.3qsdn.com/senderkw-mp3
