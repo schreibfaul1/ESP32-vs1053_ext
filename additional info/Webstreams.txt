@@ -202,7 +202,7 @@ Radio Bonn Rhein-Sieg                     www.surfmusik.de/m3u/radio-bonn-rhein-
 Radio Brocken                             stream.radiobrocken.de/live/mp3-128/radioplayerhp/play.m3u
 Radio Cottbus                             edge.audio.3qsdn.com/5708_BKtjwVvWF3NmzGH
 Radio Dresden                             streaming.radiodresden.de/radio-dresden_simulcast_128k_mp3
-Radio Duisburg                            mp3.l.nmdn.net:80/ps-radioduisburg/livestream.mp3
+Radio Duisburg                            www.surfmusik.de/m3u/radio-duisburg,9690.m3u
 Radio Eins                                webstream.radioeins.com/radio-eins.mp3
 Radio Erzgebirge                          streaming.radioerzgebirge.de/radio-erzgebirge_simulcast_128k_mp3
 Radio F                                   webradio.radiof.de:8000
