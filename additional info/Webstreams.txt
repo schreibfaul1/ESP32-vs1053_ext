@@ -198,7 +198,7 @@ radio B2 Berlin-Brandenburg               mp3ad.radiob2.c.nmdn.net/ps-radiob2reg
 Radio Bamberg                             rs1.stream24.net:80/stream
 Radio Berg                                edge.live.mp3.mdn.newmedia.nacamar.net/radioberg/livestream.mp3
 RADIO BOB!                                streams.radiobob.de/bob-live/mp3-192/vtuner/
-Radio Bonn Rhein-Sieg                     ga-stream01.ga-bonn.de/128.mp3
+Radio Bonn Rhein-Sieg                     www.surfmusik.de/m3u/radio-bonn-rhein-sieg,998.m3u
 Radio Brocken                             stream.radiobrocken.de/live/mp3-128/radioplayerhp/play.m3u
 Radio Cottbus                             edge.audio.3qsdn.com/5708_BKtjwVvWF3NmzGH
 Radio Dresden                             streaming.radiodresden.de/radio-dresden_simulcast_128k_mp3
