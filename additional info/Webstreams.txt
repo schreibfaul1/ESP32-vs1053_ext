@@ -283,7 +283,7 @@ Radio Stephansdom                         streaming.lxcluster.at:8000/live128
 Radio Technikum                           fc.macjingle.net:8200/listen.pls
 Radio Uno                                 host5.cartwall.at:8888/listen.pls
 Radio Wien                                mp3stream2.apasf.apa.at:8000/
-Radiofabrik 107,5                         www.radiofabrik.at/rafab_stream_low.m3u
+Radiofabrik 107,5                         stream.radiofabrik.at:8000/rf_low.mp3
 Soundportal                               rs24.stream24.net:8000
 U1 Tirol                                  188.138.1.125:24332/listen.pls
 Unzmarkt-Frauenburg LIVE                  www.cartwall.at:7320/listen.pls
