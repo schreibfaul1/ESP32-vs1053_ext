@@ -241,7 +241,7 @@ radiowsw                                  87.98.217.63:24094/stream
 RADIO WMW                                 mms.hoerradar.de/wmw128k
 Radio Wuppertal                           mp3.l.nmdn.net:80/ps-radiowuppertal/livestream.mp3
 RADIO21 - 104.1 Oldenburg                 188.94.97.91/radio21_oldenburg.mp3
-Radio38 Braunschweig                      stream.radio38.de/bs/mp3-128/stream.radio38.de/play.m3u
+Radio38 Wolfsburg                         stream.radio38.de/radio38.mp3
 radioeins vom rbb                         www.radioeins.de/live.m3u
 radio-ilmwelle                            www.surfmusik.de/m3u/radio-ilmwelle,17933.m3u
 ROCK ANTENNE                              www.rockantenne.de/webradio/rockantenne.m3u
