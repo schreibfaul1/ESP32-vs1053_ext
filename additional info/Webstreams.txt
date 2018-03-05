@@ -93,10 +93,13 @@ mainstreams, most 128k
 
 030-berlinfm                              vtuner.stream.laut.fm/030-berlinfm
 104.6 RTL                                 rtlberlin.hoerradar.de/rtlberlin-live-mp3-128
+1005,5 DAS HITRADIO                       www.surfmusic.de/m3u/100-5-das-hitradio,4529.m3u
 105.5 Spreeradio                          stream.spreeradio.de/spree-live/mp3-128/vtuner/
 106.4 TOP FM                              mp3.topfm.c.nmdn.net/ps-topfm/livestream.mp3
 1Live, WDR Koeln                          www.wdr.de/wdrlive/media/einslive.m3u
 88vier                                    ice.rosebud-media.de:8000/88vier
+89 HIT FM                                 stream.hitfm.de:9050/live
+917XFM                                    138.201.251.247/917xfm_128
 93,6 JAM FM                               stream.jam.fm/jamfm-live/mp3-128/vtuner/
 94.3 RS2 Partymix                         stream.rs2.de/rs2-relax/mp3-128/internetradio
 94.3 RS2                                  stream.rs2.de/rs2/mp3-128/internetradio
