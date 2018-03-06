@@ -8,7 +8,6 @@ ai-radio.org (ogg)                        listen.ai-radio.org:8000/320.ogg?cc=DE
 AmysFM                                    94.23.222.12:8024/amysfm
 AORock Radio Station                      184.75.223.178:8079#
 Austria AlpenRadio                        51.255.104.137:10030/
-BluePoint Radio                           www.bluepoint-radio.de:9080
 BluesMen Channel                          78.129.234.163:35641/
 Blur FM - Buenos Aires Argentinia         64.34.175.149:8000/blurfm03
 Chatworx Radio                            chatworx-radio.de:1180/
