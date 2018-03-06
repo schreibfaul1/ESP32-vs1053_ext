@@ -12,7 +12,6 @@ BluesMen Channel                          78.129.234.163:35641/
 Blur FM - Buenos Aires Argentinia         64.34.175.149:8000/blurfm03
 Chatworx Radio                            chatworx-radio.de:1180/
 Chill Out Zone                            air.chillout.zone:8000/radio
-Chris Country                             edge-audio-03-gos2.sharp-stream.com:80/chriscountrydab.mp3
 Randstad Radio                            212.237.51.88:80/stream/2/
 Dance radio                               pool.cdn.lagardere.cz:80/dance-radio320.mp3
 DJ Marc                                   172.93.237.106:8024/stream
