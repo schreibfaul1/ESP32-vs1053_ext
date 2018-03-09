@@ -129,7 +129,10 @@ class VS1053
     void 	 handlebyte(uint8_t b);
     void 	 showstreamtitle ( const char *ml, bool full );
     bool 	 chkhdrline ( const char* str );
-    void 	 stop_mp3client ();
+    void     startSong() ;                               // Prepare to start playing. Call this each
+                                                         // time a new song starts.
+    void     stopSong() ;                                // Finish playing a song. Call this after
+                                                         // the last playChunk call.
     inline bool data_request() const
     {
       return ( digitalRead ( dreq_pin ) == HIGH ) ;
@@ -143,10 +146,7 @@ class VS1053
 
     void     begin() ;                                   // Begin operation.  Sets pins correctly,
                                                          // and prepares SPI bus.
-    void     startSong() ;                               // Prepare to start playing. Call this each
-                                                         // time a new song starts.
-    void     stopSong() ;                                // Finish playing a song. Call this after
-                                                         // the last playChunk call.
+    void     stop_mp3client ();
     void     setVolume ( uint8_t vol ) ;                 // Set the player volume.Level from 0-100,
                                                          // higher is louder.
     void     setTone ( uint8_t* rtone ) ;                // Set the player baas/treble, 4 nibbles for
