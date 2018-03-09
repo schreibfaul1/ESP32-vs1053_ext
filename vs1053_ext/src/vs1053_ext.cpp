@@ -757,11 +757,14 @@ void VS1053::loop(){
 //---------------------------------------------------------------------------------------
 void VS1053::stop_mp3client(){
     int v=read_register(SCI_VOL);
+    mp3file.close();
+    m_f_localfile=false;
+    m_f_webstream=false;
     write_register(SCI_VOL, 0);  // Mute while stopping
 //    while(client.connected())
 //    {
 //        if(vs1053_info) vs1053_info("Stopping client\n"); // Stop connection to host
-//       client.flush();
+//        client.flush();
 //        client.stop();
 //        delay(500);
 //    }
@@ -776,11 +779,11 @@ bool VS1053::connecttohost(String host){
     int port=80;                                          // Port number for host
     String extension="/";                                 // May be like "/mp3" in "skonto.ls.lv:8002/mp3"
     String hostwoext;                                     // Host without extension and portnumber
-    m_f_localfile=false;
-    m_f_webstream=true;
 
     stopSong();
     stop_mp3client();                                     // Disconnect if still connected
+    m_f_localfile=false;
+    m_f_webstream=true;
 
     sprintf(sbuf, "Connect to new host: %s\n", host.c_str());
     if(vs1053_info) vs1053_info(sbuf);
