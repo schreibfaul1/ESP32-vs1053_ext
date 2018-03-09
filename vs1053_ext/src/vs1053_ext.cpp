@@ -309,11 +309,6 @@ void VS1053::showstreamtitle(const char *ml, bool full){
     }
     sprintf(sbuf, "Streamtitle: %s\n", streamtitle);
     if(vs1053_info) vs1053_info(sbuf);
-
-
-
-
-
 }
 //---------------------------------------------------------------------------------------
 void VS1053::handlebyte(uint8_t b){
@@ -867,13 +862,13 @@ bool VS1053::connecttoSD(String sdfile){
     m_f_webstream=false;
     while(sdfile[i] != 0){  //convert ISO8859-1 to ASCII
         path[j]=sdfile[i];
-        if(path[j] == 228) path[j]=132; // ä
-        if(path[j] == 246) path[j]=148; // ö
-        if(path[j] == 252) path[j]=129; // ü
-        if(path[j] == 196) path[j]=142; // Ä
-        if(path[j] == 214) path[j]=153; // Ö
-        if(path[j] == 220) path[j]=154; // Ü
-        if(path[j] == 223) path[j]=225; // ß
+        if(path[j] == 228) path[j]=132; // Ã¤
+        if(path[j] == 246) path[j]=148; // Ã¶
+        if(path[j] == 252) path[j]=129; // Ã¼
+        if(path[j] == 196) path[j]=142; // Ã„
+        if(path[j] == 214) path[j]=153; // Ã–
+        if(path[j] == 220) path[j]=154; // Ãœ
+        if(path[j] == 223) path[j]=225; // ÃŸ
         j++;
         i++;
     }
