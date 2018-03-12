@@ -164,6 +164,7 @@ Hitstation.fm                             46.105.118.14:13500/
 HIT104 - Your Top 40 Channel              tuner.hit104.com:80
 hr3                                       hr-hr3-live.cast.addradio.de/hr/hr3/live/mp3/128/stream.mp3
 hr4                                       hr-hr4-live.cast.addradio.de/hr/hr4/live/mp3/128/stream.mp3
+I Love Radio                              www.iloveradio.de/iloveradio.m3u
 JACK FM                                   tuner.jackfm.de:80/
 kick!fm                                   live.kickfm.eu:8000/
 KielFM - 101,2 Mhz                        radio.oksh.de:8000/kielfm.mp3.m3u
