@@ -90,8 +90,9 @@ Hireadio Centraal                         www.hitradiocentraal.nl/stream/HRC.asx
 mainstreams, most 128k
 
 030-berlinfm                              vtuner.stream.laut.fm/030-berlinfm
+101FM.de Internetradio                    www.101fm.de/radio_links/listen.pls
 104.6 RTL                                 rtlberlin.hoerradar.de/rtlberlin-live-mp3-128
-1005,5 DAS HITRADIO                       www.surfmusic.de/m3u/100-5-das-hitradio,4529.m3u
+105,5 DAS HITRADIO                        www.surfmusic.de/m3u/100-5-das-hitradio,4529.m3u
 105.5 Spreeradio                          stream.spreeradio.de/spree-live/mp3-128/vtuner/
 106.4 TOP FM                              mp3.topfm.c.nmdn.net/ps-topfm/livestream.mp3
 1Live, WDR Koeln                          www.wdr.de/wdrlive/media/einslive.m3u
@@ -158,6 +159,7 @@ Hitradio MS One                           stream.msone.de:9000
 Hitradio N1                               webstream.hitradion1.de/hitradion1
 Hitradio RT1 96,7 FM                      mp3.hitradiort1.c.nmdn.net/hitradiort1hp/livestream.mp3
 Hitradio SKW                              edge.audio.3qsdn.com/senderkw-mp3
+HITS80s                                   listen.radionomy.com/1HITS80s.m3u
 Hitstation.fm                             46.105.118.14:13500/
 HIT104 - Your Top 40 Channel              tuner.hit104.com:80
 hr3                                       hr-hr3-live.cast.addradio.de/hr/hr3/live/mp3/128/stream.mp3
@@ -231,6 +233,7 @@ Radio Potsdam                             mp3.radiopotsdam.c.nmdn.net/ps-radiopo
 Radio Primavera                           mp3ad.radioprimavera.c.nmdn.net/fs_radioprimavera/livestream.mp3
 Radio PSR                                 streams.radiopsr.de/psr-live/mp3-192/streams.radiopsr.de/
 Radio Regenbogen                          scast.regenbogen.de/rr-karlsruhe-128-mp3
+Radio RSG                                 edge.live.mp3.mdn.newmedia.nacamar.net/ps-radiorsg/livestream.mp3
 Radio Rüsselsheim                         www.radio-r.net:8000/radio-r
 radio SAW                                 stream.radiosaw.de/
 Radio Seefunk - RSF                       webradio.radio-seefunk.de:8000
