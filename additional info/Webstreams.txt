@@ -189,7 +189,6 @@ Klassik Radio - Live                      stream.klassikradio.de/live/mp3-128/ww
 KULTRADIO                                 ice.kultradio.fm/kult128.mp3.m3u
 LandesWelle Thueringen                    stream.landeswelle.de/lwt/mp3-192
 Leinehertz 106.5                          leinehertz01.htp.net:8000
-Life Radio - Made in Austria              94.136.28.10:8001/mia.m3u
 M1-Chillout                               tuner.m1.fm/chillout.mp3
 M1-Hits                                   tuner.m1.fm/hits.mp3
 Magic                                     icy-e-bz-03-gos.sharp-stream.com/magic1054.mp3
@@ -299,6 +298,7 @@ Hitradio OE3                              mp3stream7.apasf.apa.at:8000/listen.pl
 Kronehit Yam                              onair-ha1.krone.at/kronehit-yam.mp3.m3u
 Kronehit                                  onair.krone.at/kronehit.mp3.m3u
 Life Radio                                94.136.28.10:8000/liferadio.m3u
+Life Radio - Made in Austria              94.136.28.10:8001/mia.m3u
 OE1                                       mp3stream3.apasf.apa.at/listen.pls
 ORF FM4                                   mp3stream1.apasf.apa.at:8000
 ORF RADIO Kaernten                        194.232.200.145/listen.pls
