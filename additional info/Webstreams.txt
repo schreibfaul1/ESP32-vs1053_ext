@@ -107,7 +107,7 @@ mainstreams, most 128k
 98.8 KISS FM                              stream.kissfm.de/kissfm/mp3-128/internetradio
 Absolut Radio                             stream.absolutradio.de/hq/mp3-160/vtuner/
 Absolut Radio Relax                       stream.absolutradio.de/relax/mp3-160
-AllgäuHIT                                 streamstat.net/play.cgi?sid=26679415&ext=.m3u
+AllgäuHIT                                 www.allgaeuhit.de/allgaeuhit.m3u
 Alpenwelle                                live.alpenwelle.de/alpenwelle128
 alsterradio                               live96.alsterradio.de/
 AlternativeFM                             alternativefm.cast.addradio.de/alternativefm/simulcast/high/stream.mp3
