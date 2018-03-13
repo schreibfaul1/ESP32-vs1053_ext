@@ -200,7 +200,7 @@ MEER RADIO 88.0                           meerradio.ip-streaming.net/meerradio
 MEGA RADIO                                mega.syntegic.net:8000/mega.mp3
 N JOY                                     www.ndr.de/resources/metadaten/audio/m3u/n-joy.m3u
 NDR1 Radio MV                             www.ndr.de/resources/metadaten/audio/m3u/ndr1radiomv.m3u
-NDR2 MV                                   /www.ndr.de/resources/metadaten/audio/m3u/ndr2_mv.m3u
+NDR2 MV                                   www.ndr.de/resources/metadaten/audio/m3u/ndr2_mv.m3u
 NDR 90,3                                  www.ndr.de/resources/metadaten/audio/m3u/ndr903.m3u
 Neckaralb Live                            www.surfmusik.de/m3u/neckaralb-live,18555.m3u
 NE-WS 89.4                                edge.live.mp3.mdn.newmedia.nacamar.net/ps-news894/livestream.mp3.m3u
