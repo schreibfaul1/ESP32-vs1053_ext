@@ -209,8 +209,8 @@ planet radio iTunes hot 40                mp3.planetradio.de/planetradio/hqlives
 Power Radio                               85.25.217.22:8020/stream
 PRIMATON                                  mp3ad.primaton.c.nmdn.net/primaton/livestream4hi.mp3?
 R.SA Sachsen                              streams.rsa-sachsen.de/100/mp3-128/streams.rsa-sachsen.de/
-R.SH Sylt                                 streams.rsh.de/rsh-sylt/mp3-192/mediaplayer
 R.SH                                      streams.rsh.de/rsh-live/mp3-192/vtuner/
+R.SH Sylt                                 streams.rsh.de/rsh-sylt/mp3-192/mediaplayer
 Radio 21 Hannover.FM                      188.94.97.92:80/lnn_hannoverfm.mp3
 Radio 7 Aalen                             stream.radio7.de/stream9/livestream.mp3
 Radio 8                                   stream.radio8.de:8000/live
