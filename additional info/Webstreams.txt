@@ -191,7 +191,6 @@ LandesWelle Thueringen                    stream.landeswelle.de/lwt/mp3-192
 Leinehertz 106.5                          leinehertz01.htp.net:8000
 M1-Chillout                               tuner.m1.fm/chillout.mp3
 M1-Hits                                   tuner.m1.fm/hits.mp3
-Magic                                     icy-e-bz-03-gos.sharp-stream.com/magic1054.mp3
 MAXX FM                                   mp3ad.radiob2maxxfm.c.nmdn.net/radiob2maxxfm/livestream.mp3
 MDR JUMP                                  avw.mdr.de/streams/284320-0_mp3_high.m3u
 MDR SACHSEN                               avw.mdr.de/streams/284280-0_aac_high.m3u
