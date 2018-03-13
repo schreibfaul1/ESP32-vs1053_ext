@@ -219,7 +219,6 @@ RADIO AUGSBURG                            streamplus36.leonex.de:15440
 radio B2 Berlin-Brandenburg               mp3ad.radiob2.c.nmdn.net/ps-radiob2regional/livestream.mp3
 Radio Bamberg                             rs1.stream24.net:80/stream
 Radio Berg                                edge.live.mp3.mdn.newmedia.nacamar.net/radioberg/livestream.mp3
-radioBerlin 88,0                          rbb-radioberlin-live.cast.addradio.de/rbb/radioberlin/live/mp3/128/stream.mp3
 RADIO BOB!                                streams.radiobob.de/bob-live/mp3-192/vtuner/
 Radio Bonn Rhein-Sieg                     www.surfmusik.de/m3u/radio-bonn-rhein-sieg,998.m3u
 Radio Brocken                             stream.radiobrocken.de/live/mp3-128/radioplayerhp/play.m3u
@@ -267,6 +266,7 @@ RADIO WMW                                 mms.hoerradar.de/wmw128k
 Radio Wuppertal                           mp3.l.nmdn.net:80/ps-radiowuppertal/livestream.mp3
 RADIO21 - 104.1 Oldenburg                 188.94.97.91/radio21_oldenburg.mp3
 Radio38                                   stream.radio38.de/bs/mp3-128/stream.radio38.de/
+radioBerlin 88,0                          rbb-radioberlin-live.cast.addradio.de/rbb/radioberlin/live/mp3/128/stream.mp3
 radioeins vom rbb                         www.radioeins.de/live.m3u
 radio-ilmwelle                            www.surfmusik.de/m3u/radio-ilmwelle,17933.m3u
 ROCK ANTENNE                              www.rockantenne.de/webradio/rockantenne.m3u
