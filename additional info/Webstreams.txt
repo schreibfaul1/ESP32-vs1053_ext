@@ -257,6 +257,7 @@ Radio Rüsselsheim                         www.radio-r.net:8000/radio-r
 Radio Salü - Top100                       internetradio.salue.de:8000/top100.mp3
 radio SAW                                 stream.radiosaw.de/
 Radio Seefunk - RSF                       webradio.radio-seefunk.de:8000
+Radio SRW                                 148.251.57.185:9306/
 Radio TEDDY                               78.47.119.109:8000/intro.radioteddy.mp3
 Radio Ton                                 live.radioton.de/rt-live-hn.m3u
 Radio Trausnitz                           mp3.l.nmdn.net:80/ps-radiotrausnitz/livestream.mp3
