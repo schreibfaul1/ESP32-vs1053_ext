@@ -262,13 +262,13 @@ Radio TEDDY                               78.47.119.109:8000/intro.radioteddy.mp
 Radio Ton                                 live.radioton.de/rt-live-hn.m3u
 Radio Trausnitz                           mp3.l.nmdn.net:80/ps-radiotrausnitz/livestream.mp3
 RADIO VHR                                 live.radio-vhr.de/radiovhr.mp3.m3u
-radiowsw                                  87.98.217.63:24094/stream
 RADIO WMW                                 mms.hoerradar.de/wmw128k
 Radio Wuppertal                           mp3.l.nmdn.net:80/ps-radiowuppertal/livestream.mp3
 RADIO21 - 104.1 Oldenburg                 188.94.97.91/radio21_oldenburg.mp3
 Radio38                                   stream.radio38.de/bs/mp3-128/stream.radio38.de/
 radioBerlin 88,0                          rbb-radioberlin-live.cast.addradio.de/rbb/radioberlin/live/mp3/128/stream.mp3
 radioeins vom rbb                         www.radioeins.de/live.m3u
+radiowsw                                  87.98.217.63:24094/stream
 radio-ilmwelle                            www.surfmusik.de/m3u/radio-ilmwelle,17933.m3u
 ROCK ANTENNE                              www.rockantenne.de/webradio/rockantenne.m3u
 Rockland                                  stream.rockland-digital.de/rockland/mp3-128
