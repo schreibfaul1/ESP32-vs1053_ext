@@ -294,8 +294,8 @@ Antenne Tirol Livestream                  streamplus30.leonex.de:14840/listen.pl
 ANTENNE VORARLBERG HD                     webradio.antennevorarlberg.at/live.m3u
 HEROLD relax radio                        94.136.28.13:8015/heroldrelax
 Hitradio OE3                              mp3stream7.apasf.apa.at:8000/listen.pls
-Kronehit Yam                              onair-ha1.krone.at/kronehit-yam.mp3.m3u
 Kronehit                                  onair.krone.at/kronehit.mp3.m3u
+Kronehit Yam                              onair-ha1.krone.at/kronehit-yam.mp3.m3u
 Life Radio                                94.136.28.10:8000/liferadio.m3u
 Life Radio - Made in Austria              94.136.28.10:8001/mia.m3u
 OE1                                       mp3stream3.apasf.apa.at/listen.pls
@@ -329,22 +329,22 @@ Radio 24 Zürich                           icecast.radio24.ch/radio24.m3u
 Radio 32                                  radio32-stream.customer.solnet.ch:8000/radio32.m3u
 Radio 3FACH                               3fach.ch/wp-content/uploads/listen.pls
 Radio 4 TNG                               radio4tng.ice.infomaniak.ch/radio4tng-live-web.mp3.m3u
+Radio Argovia                             icecastgreen.argovia.ch:8080/argovia-rc-96-aac
 Radio Basilisk                            ohnewerbung.ice.infomaniak.ch:80/radiobasilisk-64-128-0
 Radio BeO                                 87.237.169.123:8000/radiobeo.mp3
 RADIO BERN1                               radio.netstream.ch/radiobern1128k.m3u
-Radio Argovia                             icecastgreen.argovia.ch:8080/argovia-rc-96-aac
 Radio Central                             radiocentral.ice.infomaniak.ch/radiocentral-128.mp3
 Radio FM1                                 radiofm1.ice.infomaniak.ch/radiofm1-128.mp3
 Radio Freiburg                            broadcast.infomaniak.ch/radiofreiburg-high.mp3.m3u
 Radio Inside                              fra.radiostream.de:37499/listen.pls
 Radio Kaiseregg                           radiokaiseregg128k.ice.infomaniak.ch/playlists/stream128k.mp3.m3u
 Radio Pilatus                             www.radiopilatus.ch/streams/pilatus128.pls
+Radio Rottu Oberwallis                    streams.rro.ch/rro.mp3
 Radio Swiss Pop                           stream.srg-ssr.ch/rsp/mp3_128.m3u
-Radio Rottu Oberwallis                    streams.rro.ch/rro.mp3 
-radiotell.ch                              stream.radiotell.ch/radiotell.mp3.m3u
+RADIO TOP                                 icecast.radiotop.ch/radiotop_128.m3u 
 RADIO TOP TWO                             icecast.radiotop.ch/toptwo_128.m3u
-RADIO TOP                                 icecast.radiotop.ch/radiotop_128.m3u
 Radio Zuerisee                            mp3.radio.ch/radiozuerisee128k.m3u
+radiotell.ch                              stream.radiotell.ch/radiotell.mp3.m3u
 SRF 1                                     stream.srg-ssr.ch/drs1/mp3_128.m3u
 SRF 2                                     stream.srg-ssr.ch/drs2/mp3_128.m3u
 SRF 3                                     stream.srg-ssr.ch/drs3/mp3_128.m3u
