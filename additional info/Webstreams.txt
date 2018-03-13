@@ -215,7 +215,7 @@ Radio 21 Hannover.FM                      188.94.97.92:80/lnn_hannoverfm.mp3
 Radio 7 Aalen                             stream.radio7.de/stream9/livestream.mp3
 Radio 8                                   stream.radio8.de:8000/live
 Radio Arabella                            rs6.stream24.net/stream.aac
-Radio38 Wolfsburg                         stream.radio38.de/wb/mp3-128/listenlive/play.m3u
+Radio38                                   stream.radio38.de/bs/mp3-128/stream.radio38.de/
 RADIO AUGSBURG                            streamplus36.leonex.de:15440
 radio B2 Berlin-Brandenburg               mp3ad.radiob2.c.nmdn.net/ps-radiob2regional/livestream.mp3
 Radio Bamberg                             rs1.stream24.net:80/stream
