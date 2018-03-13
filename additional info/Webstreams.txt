@@ -184,7 +184,7 @@ JACK FM                                   tuner.jackfm.de:80/
 JOKE FM                                   rs33.stream24.net/joke-fm.mp3
 kick!fm                                   live.kickfm.eu:8000/
 KielFM - 101,2 Mhz                        radio.oksh.de:8000/kielfm.mp3.m3u
-KiRaKa                                    www.wdr.de/wdrlive/media/kiraka.m3u
+KiRaKa                                    wdr-kiraka-live.icecast.wdr.de/wdr/kiraka/live/mp3/128/stream.mp3
 Klassik Radio - Live                      stream.klassikradio.de/live/mp3-128/www.klassikradio.de/
 KULTRADIO                                 ice.kultradio.fm/kult128.mp3.m3u
 LandesWelle Thueringen                    stream.landeswelle.de/lwt/mp3-192
