@@ -268,17 +268,17 @@ void VS1053::showstreamtitle(const char *ml, bool full){
     if(pos1!=-1){                               // StreamTitle found
         pos1=pos1+12;
         st=mline.substring(pos1);               // remove "StreamTitle="
+        if(st.indexOf('&')!=-1){                // can be html coded
+            st.replace("&Auml;", "Ä" ); st.replace("&auml;", "ä"); //HTML -> ASCII
+            st.replace("&Öuml;", "Ö" ); st.replace("&ouml;", "ö");
+            st.replace("&Uuml;", "Ü" ); st.replace("&uuml;", "ü");
+            st.replace("&szlig;","ß" ); st.replace("&amp;",  "&");
+            st.replace("&quot;", "\""); st.replace("&lt;",   "<");
+            st.replace("&gt;",   ">" ); st.replace("&apos;", "'");
+        }
         pos2= st.indexOf(';', pos1);            // end of Streamtitle
         if(pos2==-1) pos2=st.length();
         st=st.substring(0,pos2);
-        if(st.indexOf('&')!=-1){                // can be html coded
-            st.replace("&Auml","Ä"); st.replace("&auml","ä"); //HTML -> ASCII
-            st.replace("&Öuml","Ö"); st.replace("&ouml","ö");
-            st.replace("&Uuml","Ü"); st.replace("&uuml","ü");
-            st.replace("&szlig","ß");st.replace("&amp", "&");
-            st.replace("&quot","\"");st.replace("&lt",  "<");
-            st.replace("&gt",">");   st.replace("&apos","'");
-        }
         pos3=st.indexOf(" - ");                 // separator artist - title
         if(pos3!=-1){                           // found separator? yes
             artist=st.substring(0,pos3);        // artist not used yet
@@ -287,7 +287,7 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         if(st[0]=='\'') st=st.substring(1,st.length());               // remove ' at the begin if exists
         if(st[st.length()-1]=='\'') st=st.substring(0,st.length()-1); // remove ' at the end if exists
         if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
-        st="Streamtile found: " + artist + " - " + title + '\n';
+        st="Streamtile found: " + st + '\n';
         if(vs1053_info) vs1053_info(st.c_str());
     }
     pos4=mline.indexOf("StreamUrl=");
@@ -298,7 +298,7 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         if(pos5==-1) pos5=st.length();
         st=st.substring(0,pos5);
         if(st[0]=='\'') st=st.substring(1,st.length());               // remove ' at the begin if exists
-        if(st[st.length()-1]=='\'') st=st.substring(0,st.length()-1); // remove ' at the end if exists
+        if(st[st.length()-2]=='\'') st=st.substring(0,st.length()-2); // remove ' at the end if exists
         if(st.length()>5){                      // StreamUrl can have reasonable content
             st="StreamUrl found: " + st + "\n";
             if(vs1053_info) vs1053_info(st.c_str());
