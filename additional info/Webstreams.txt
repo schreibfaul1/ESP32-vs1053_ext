@@ -344,7 +344,7 @@ Radio Swiss Pop                           stream.srg-ssr.ch/rsp/mp3_128.m3u
 RADIO TOP                                 icecast.radiotop.ch/radiotop_128.m3u 
 RADIO TOP TWO                             icecast.radiotop.ch/toptwo_128.m3u
 Radio Zuerisee                            mp3.radio.ch/radiozuerisee128k.m3u
-radiotell.ch                              stream.radiotell.ch/radiotell.mp3.m3u
+radiotell.ch                              stream.radiotell.ch/radiotell.mp3
 SRF 1                                     stream.srg-ssr.ch/drs1/mp3_128.m3u
 SRF 2                                     stream.srg-ssr.ch/drs2/mp3_128.m3u
 SRF 3                                     stream.srg-ssr.ch/drs3/mp3_128.m3u
