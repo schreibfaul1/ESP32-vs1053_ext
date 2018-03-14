@@ -259,83 +259,89 @@ bool VS1053::chkhdrline(const char* str){
 }
 //---------------------------------------------------------------------------------------
 void VS1053::showstreamtitle(const char *ml, bool full){
-    char* p1;
-    char* p2;
-    char streamtitle[150];                             // Streamtitle from metadata
+    // example for ml:
+    // StreamTitle='Oliver Frank - Mega Hitmix';StreamUrl='www.radio-welle-woerthersee.at';
 
-    if(strstr(ml, "StreamTitle=")){
-        sprintf(sbuf, "Streamtitle found %d bytes\n", strlen(ml));
-        //for(int i=0; i<strlen(ml); i++) log_e("%c",ml[i]);
-        if(vs1053_info) vs1053_info(sbuf);
-        p1=(char*)ml + 12;                             // Begin of artist and title
-        if((p2=strstr(ml, ";"))){                      // Search for end of title
-            if( *p1 == '\''){                          // Surrounded by quotes?
-                p1++;
-                p2--;
-            }
-            *p2='\0';                                  // Strip the rest of the line
+    int8_t pos1=0, pos2=0, pos3=0, pos4=0, pos5=0;
+    String mline=ml, st="", artist="", title="";
+    pos1=mline.indexOf("StreamTitle=");
+    if(pos1!=-1){                               // StreamTitle found
+        pos1=pos1+12;
+        st=mline.substring(pos1);               // remove "StreamTitle="
+        pos2= st.indexOf(';', pos1);            // end of Streamtitle
+        if(pos2==-1) pos2=st.length();
+        st=st.substring(0,pos2);
+        if(st.indexOf('&')!=-1){                // can be html coded
+            st.replace("&Auml","Ä"); st.replace("&auml","ä"); //HTML -> ASCII
+            st.replace("&Öuml","Ö"); st.replace("&ouml","ö");
+            st.replace("&Uuml","Ü"); st.replace("&uuml","ü");
+            st.replace("&szlig","ß");st.replace("&amp", "&");
+            st.replace("&quot","\"");st.replace("&lt",  "<");
+            st.replace("&gt",">");   st.replace("&apos","'");
         }
-        // Save last part of string as streamtitle.  Protect against buffer overflow
-        strncpy(streamtitle, p1, sizeof(streamtitle));
-        streamtitle[sizeof(streamtitle) - 1]='\0';
+        pos3=st.indexOf(" - ");                 // separator artist - title
+        if(pos3!=-1){                           // found separator? yes
+            artist=st.substring(0,pos3);        // artist not used yet
+            title=st.substring(pos3+3);         // title not used yet
+        }
+        if(st[0]=='\'') st=st.substring(1,st.length());               // remove ' at the begin if exists
+        if(st[st.length()-1]=='\'') st=st.substring(0,st.length()-1); // remove ' at the end if exists
+        if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
+        st="Streamtile found: " + artist + " - " + title + '\n';
+        if(vs1053_info) vs1053_info(st.c_str());
     }
-    else if(full)
-    {
+    pos4=mline.indexOf("StreamUrl=");
+    if(pos4!=-1){                               // StreamUrl found
+        pos4=pos4+10;
+        st=mline.substring(pos4);               // remove "StreamUrl="
+        pos5= st.indexOf(';', pos4);            // end of StreamUrl
+        if(pos5==-1) pos5=st.length();
+        st=st.substring(0,pos5);
+        if(st[0]=='\'') st=st.substring(1,st.length());               // remove ' at the begin if exists
+        if(st[st.length()-1]=='\'') st=st.substring(0,st.length()-1); // remove ' at the end if exists
+        if(st.length()>5){                      // StreamUrl can have reasonable content
+            st="StreamUrl found: " + st + "\n";
+            if(vs1053_info) vs1053_info(st.c_str());
+        }
+    }
+    if(!full){
+        m_icystreamtitle="";                    // Unknown type
+        return;                                 // Do not show
+    }
+    if(pos1==-1 && pos4==-1){
         // Info probably from playlist
-        strncpy(streamtitle, ml, sizeof(streamtitle));
-        streamtitle[sizeof(streamtitle) - 1]='\0';
+        st=mline;
+        if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
+        st="Streamtitle: " + st + "\n";
+        if(vs1053_info) vs1053_info(sbuf);
     }
-    else
-    {
-        m_icystreamtitle="";             				// Unknown type
-        return;                                       	// Do not show
-    }
-    // Save for status request from browser and for MQTT
-    m_icystreamtitle=streamtitle;
-    if((p1=strstr(streamtitle, " - ")))                	// look for artist/title separator
-    {
-        *p1++='\n';                                    	// Found: replace 3 characters by newline
-        p2=p1 + 2;
-        if( *p2 == ' ')                                	// Leading space in title?
-                {
-            p2++;
-        }
-        strcpy(p1, p2);                                	// Shift 2nd part of title 2 or 3 places
-    }
-    if(vs1053_showstreamtitle) vs1053_showstreamtitle(streamtitle);
-    for(int i=0; i<(sizeof(streamtitle)); i++){
-        if(streamtitle[i]=='\n') streamtitle[i]=' '; //remove all LF within stramtitle
-        if(streamtitle[i]=='\r') streamtitle[i]=' '; //remove all CR within stramtitle
-    }
-    sprintf(sbuf, "Streamtitle: %s\n", streamtitle);
-    if(vs1053_info) vs1053_info(sbuf);
 }
 //---------------------------------------------------------------------------------------
 void VS1053::handlebyte(uint8_t b){
-    static uint16_t playlistcnt;                           		// Counter to find right entry in playlist
-    String lcml;                                           		// Lower case metaline
-    static String ct;                                      		// Contents type
+    static uint16_t playlistcnt;                                // Counter to find right entry in playlist
+    String lcml;                                                // Lower case metaline
+    static String ct;                                           // Contents type
     static String host;
-    int inx;                                               		// Pointer in metaline
+    int inx;                                                    // Pointer in metaline
     static boolean f_entry=false;                               // entryflag for asx playlist
 
-    if(m_datamode == VS1053_HEADER)                          	// Handle next byte of MP3 header
+    if(m_datamode == VS1053_HEADER)                             // Handle next byte of MP3 header
     {
-        if((b > 0x7F) ||                                   		// Ignore unprintable characters
-                (b == '\r') ||                             		// Ignore CR
-                (b == '\0'))                               		// Ignore NULL
+        if((b > 0x7F) ||                                        // Ignore unprintable characters
+                (b == '\r') ||                                  // Ignore CR
+                (b == '\0'))                                    // Ignore NULL
                 {
             // Yes, ignore
         }
-        else if(b == '\n'){                                		// Linefeed ?
-            m_LFcount++;                                     	// Count linefeeds
-            if(chkhdrline(m_metaline.c_str())){              	// Reasonable input?
-                lcml=m_metaline;                             	// Use lower case for compare
+        else if(b == '\n'){                                     // Linefeed ?
+            m_LFcount++;                                        // Count linefeeds
+            if(chkhdrline(m_metaline.c_str())){                 // Reasonable input?
+                lcml=m_metaline;                                // Use lower case for compare
                 lcml.toLowerCase();
                 lcml.trim();
                 sprintf(sbuf, "%s\n", m_metaline.c_str());
-                if(vs1053_info) vs1053_info(sbuf);         		// Yes, Show it
-                if(lcml.indexOf("content-type:") >= 0){     	// Line with "Content-Type: xxxx/yyy"
+                if(vs1053_info) vs1053_info(sbuf);              // Yes, Show it
+                if(lcml.indexOf("content-type:") >= 0){         // Line with "Content-Type: xxxx/yyy"
                     if(lcml.indexOf("audio") >= 0){             // Is ct audio?
                         m_ctseen=true;                          // Yes, remember seeing this
                         ct=m_metaline.substring(14);            // Set contentstype. Not used yet
@@ -362,17 +368,17 @@ void VS1053::handlebyte(uint8_t b){
                     connecttohost(host);
                 }
                 else if(lcml.startsWith("icy-br:")){
-                    m_bitrate=m_metaline.substring(7).toInt(); 	// Found bitrate tag, read the bitrate
+                    m_bitrate=m_metaline.substring(7).toInt();  // Found bitrate tag, read the bitrate
                     sprintf(sbuf,"%d", m_bitrate);
                     if(vs1053_bitrate) vs1053_bitrate(sbuf);
                 }
                 else if(lcml.startsWith("icy-metaint:")){
-                    m_metaint=m_metaline.substring(12).toInt();	// Found metaint tag, read the value
+                    m_metaint=m_metaline.substring(12).toInt(); // Found metaint tag, read the value
                     //if(m_metaint==0) m_metaint=16000;           // if no set to default
                 }
                 else if(lcml.startsWith("icy-name:")){
-                    m_icyname=m_metaline.substring(9);         	// Get station name
-                    m_icyname.trim();                        	// Remove leading and trailing spaces
+                    m_icyname=m_metaline.substring(9);          // Get station name
+                    m_icyname.trim();                           // Remove leading and trailing spaces
                     if(m_icyname!=""){
                         if(vs1053_showstation) vs1053_showstation(m_icyname.c_str());
                     }
@@ -383,53 +389,53 @@ void VS1053::handlebyte(uint8_t b){
                     if(m_metaline.endsWith("chunked")){
                         m_chunked=true;
                         if(vs1053_info) vs1053_info("chunked data transfer\n");
-                        m_chunkcount=0;                      	// Expect chunkcount in DATA
+                        m_chunkcount=0;                         // Expect chunkcount in DATA
                     }
                 }
                 else{
                     // all other
                 }
             }
-            m_metaline="";                             			// Reset this line
+            m_metaline="";                                      // Reset this line
             if((m_LFcount == 2) && m_ctseen){                   // Some data seen and a double LF?
                 sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
                 if(vs1053_info) vs1053_info(sbuf);
                 if(m_icyname==""){if(vs1053_showstation) vs1053_showstation("");} // no icyname available
                 if(m_bitrate==0){if(vs1053_bitrate) vs1053_bitrate("");} // no bitrate received
-                m_datamode=VS1053_DATA;                      	// Expecting data now
+                m_datamode=VS1053_DATA;                         // Expecting data now
                 if(m_f_ogg==true){
                     m_datamode=VS1053_OGG;                      // Overwrite m_datamode
                     m_f_ogg=false;
                 }
-                startSong();                               		// Start a new song
+                startSong();                                    // Start a new song
             }
         }
         else
         {
-            m_metaline+=(char)b;                             	// Normal character, put new char in metaline
-            m_LFcount=0;                                     	// Reset double CRLF detection
+            m_metaline+=(char)b;                                // Normal character, put new char in metaline
+            m_LFcount=0;                                        // Reset double CRLF detection
         }
         return;
     }
-    if(m_datamode == VS1053_METADATA)                        	// Handle next byte of metadata
+    if(m_datamode == VS1053_METADATA)                           // Handle next byte of metadata
     {
-        if(m_firstmetabyte)                                  	// First byte of metadata?
+        if(m_firstmetabyte)                                     // First byte of metadata?
         {
-            m_firstmetabyte=false;                           	// Not the first anymore
-            m_metacount=b * 16 + 1;                          	// New count for metadata including length byte
+            m_firstmetabyte=false;                              // Not the first anymore
+            m_metacount=b * 16 + 1;                             // New count for metadata including length byte
             if(m_metacount > 1){
-                sprintf(sbuf, "Metadata block %d bytes\n", 		// Most of the time there are zero bytes of metadata
+                sprintf(sbuf, "Metadata block %d bytes\n",      // Most of the time there are zero bytes of metadata
                         m_metacount - 1);
                 if(vs1053_info) vs1053_info(sbuf);
            }
-            m_metaline="";                                   	// Set to empty
+            m_metaline="";                                      // Set to empty
         }
         else
         {
-            m_metaline+=(char)b;                             	// Normal character, put new char in metaline
+            m_metaline+=(char)b;                                // Normal character, put new char in metaline
         }
         if(--m_metacount == 0){
-            if(m_metaline.length()){                          	// Any info present?
+            if(m_metaline.length()){                            // Any info present?
                 // metaline contains artist and song name.  For example:
                 // "StreamTitle='Don McLean - American Pie';StreamUrl='';"
                 // Sometimes it is just other info like:
@@ -437,74 +443,74 @@ void VS1053::handlebyte(uint8_t b){
                 // Isolate the StreamTitle, remove leading and trailing quotes if present.
                 if( !m_f_localfile) showstreamtitle(m_metaline.c_str(), true);         // Show artist and title if present in metadata
             }
-            if(m_metaline.length() > 1500){                   	// Unlikely metaline length?
+            if(m_metaline.length() > 1500){                     // Unlikely metaline length?
                 if(vs1053_info) vs1053_info("Metadata block to long! Skipping all Metadata from now on.\n");
-                m_metaint=16000;                               	// Probably no metadata
-                m_metaline="";                               	// Do not waste memory on this
+                m_metaint=16000;                                // Probably no metadata
+                m_metaline="";                                  // Do not waste memory on this
             }
-            m_datamode=VS1053_DATA;                          	// Expecting data
+            m_datamode=VS1053_DATA;                             // Expecting data
         }
     }
-    if(m_datamode == VS1053_PLAYLISTINIT)                    	// Initialize for receive .m3u file
+    if(m_datamode == VS1053_PLAYLISTINIT)                       // Initialize for receive .m3u file
     {
         // We are going to use metadata to read the lines from the .m3u file
         // Sometimes this will only contain a single line
         f_entry=false;                                          // no entry found yet (asx playlist)
-        m_metaline="";                                       	// Prepare for new line
-        m_LFcount=0;                                         	// For detection end of header
-        m_datamode=VS1053_PLAYLISTHEADER;                    	// Handle playlist data
-        playlistcnt=1;                                     		// Reset for compare
-        m_totalcount=0;                                      	// Reset totalcount
+        m_metaline="";                                          // Prepare for new line
+        m_LFcount=0;                                            // For detection end of header
+        m_datamode=VS1053_PLAYLISTHEADER;                       // Handle playlist data
+        playlistcnt=1;                                          // Reset for compare
+        m_totalcount=0;                                         // Reset totalcount
         if(vs1053_info) vs1053_info("Read from playlist\n");
     }
-    if(m_datamode == VS1053_PLAYLISTHEADER){                 	// Read header
-        if((b > 0x7F) ||                                   		// Ignore unprintable characters
-                (b == '\r') ||                             		// Ignore CR
-                (b == '\0'))                               		// Ignore NULL
+    if(m_datamode == VS1053_PLAYLISTHEADER){                    // Read header
+        if((b > 0x7F) ||                                        // Ignore unprintable characters
+                (b == '\r') ||                                  // Ignore CR
+                (b == '\0'))                                    // Ignore NULL
                 {
             // Yes, ignore
         }
-        else if(b == '\n')                                 		// Linefeed ?
+        else if(b == '\n')                                      // Linefeed ?
                 {
-            m_LFcount++;                                     	// Count linefeeds
+            m_LFcount++;                                        // Count linefeeds
             sprintf(sbuf, "Playlistheader: %s\n", m_metaline.c_str());  // Show playlistheader
             if(vs1053_info) vs1053_info(sbuf);
-            m_metaline="";                                   	// Ready for next line
+            m_metaline="";                                      // Ready for next line
             if(m_LFcount == 2)
                     {
                 if(vs1053_info) vs1053_info("Switch to PLAYLISTDATA\n");
-                m_datamode=VS1053_PLAYLISTDATA;              	// Expecting data now
+                m_datamode=VS1053_PLAYLISTDATA;                 // Expecting data now
                 return;
             }
         }
         else
         {
-            m_metaline+=(char)b;                             	// Normal character, put new char in metaline
-            m_LFcount=0;                                     	// Reset double CRLF detection
+            m_metaline+=(char)b;                                // Normal character, put new char in metaline
+            m_LFcount=0;                                        // Reset double CRLF detection
         }
     }
-    if(m_datamode == VS1053_PLAYLISTDATA)                    	// Read next byte of .m3u file data
+    if(m_datamode == VS1053_PLAYLISTDATA)                       // Read next byte of .m3u file data
     {
         m_t0=millis();
-        if((b > 0x7F) ||                                   		// Ignore unprintable characters
-                (b == '\r') ||                             		// Ignore CR
-                (b == '\0'))                               		// Ignore NULL
+        if((b > 0x7F) ||                                        // Ignore unprintable characters
+                (b == '\r') ||                                  // Ignore CR
+                (b == '\0'))                                    // Ignore NULL
                 { /* Yes, ignore */ }
 
-        else if(b == '\n'){                              		// Linefeed or end of string?
+        else if(b == '\n'){                                     // Linefeed or end of string?
             sprintf(sbuf, "Playlistdata: %s\n", m_metaline.c_str());  // Show playlistdata
             if(vs1053_info) vs1053_info(sbuf);
             if(m_playlist.endsWith("m3u")){
-                if(m_metaline.length() < 5) {                  	// Skip short lines
-                    m_metaline="";								// Flush line
+                if(m_metaline.length() < 5) {                   // Skip short lines
+                    m_metaline="";                              // Flush line
                     return;}
-                if(m_metaline.indexOf("#EXTINF:") >= 0){       	// Info?
+                if(m_metaline.indexOf("#EXTINF:") >= 0){        // Info?
                     if(m_playlist_num == playlistcnt){          // Info for this entry?
                         inx=m_metaline.indexOf(",");            // Comma in this line?
                         if(inx > 0){
                             // Show artist and title if present in metadata
                             showstreamtitle(m_metaline.substring(inx + 1).c_str(), true);}}}
-                if(m_metaline.startsWith("#")){        			// Commentline?
+                if(m_metaline.startsWith("#")){                 // Commentline?
                     m_metaline="";
                     return;}                                    // Ignore commentlines
                 // Now we have an URL for a .mp3 file or stream.  Is it the rigth one?
@@ -514,23 +520,23 @@ void VS1053::handlebyte(uint8_t b){
                 if(m_metaline.indexOf("&")){
                     m_metaline=m_metaline.substring(0, m_metaline.indexOf("&"));}
                 if(m_playlist_num == playlistcnt){
-                    inx=m_metaline.indexOf("http://");     		// Search for "http://"
-                    if(inx >= 0){                              	// Does URL contain "http://"?
-                        host=m_metaline.substring(inx + 7);} 	// Yes, remove it and set host
+                    inx=m_metaline.indexOf("http://");          // Search for "http://"
+                    if(inx >= 0){                               // Does URL contain "http://"?
+                        host=m_metaline.substring(inx + 7);}    // Yes, remove it and set host
                     else{
-                        host=m_metaline;}              			// Yes, set new host
+                        host=m_metaline;}                       // Yes, set new host
                     log_i("connecttohost %s", host.c_str());
-                    connecttohost(host);                       	// Connect to it
+                    connecttohost(host);                        // Connect to it
                 }
                 m_metaline="";
-                host=m_playlist;                    			// Back to the .m3u host
-                playlistcnt++;                                 	// Next entry in playlist
+                host=m_playlist;                                // Back to the .m3u host
+                playlistcnt++;                                  // Next entry in playlist
             } //m3u
             if(m_playlist.endsWith("pls")){
                 if(m_metaline.startsWith("File1")){
-                    inx=m_metaline.indexOf("http://");  		// Search for "http://"
-                    if(inx >= 0){                              	// Does URL contain "http://"?
-                        m_plsURL=m_metaline.substring(inx + 7);	// Yes, remove it
+                    inx=m_metaline.indexOf("http://");          // Search for "http://"
+                    if(inx >= 0){                               // Does URL contain "http://"?
+                        m_plsURL=m_metaline.substring(inx + 7); // Yes, remove it
                         if(m_plsURL.indexOf("&")>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf("&")); // remove parameter
                         // Now we have an URL for a .mp3 file or stream in host.
 
@@ -547,10 +553,10 @@ void VS1053::handlebyte(uint8_t b){
                 if(m_metaline.startsWith("Length1")) m_f_plsTitle=true; // if no Title is available
                 if((m_f_plsFile==true)&&(m_metaline.length()==0)) m_f_plsTitle=true;
                 m_metaline="";
-                if(m_f_plsFile && m_f_plsTitle){ 	//we have both StationName and StationURL
+                if(m_f_plsFile && m_f_plsTitle){    //we have both StationName and StationURL
                     m_f_plsFile=false; m_f_plsTitle=false;
                     log_i("connecttohost %s", host.c_str());
-                    connecttohost(m_plsURL); 		// Connect to it
+                    connecttohost(m_plsURL);        // Connect to it
                 }
             }//pls
             if(m_playlist.endsWith("asx")){
@@ -586,7 +592,7 @@ void VS1053::handlebyte(uint8_t b){
         }
         else
         {
-            m_metaline+=(char)b;         			        // Normal character, add it to metaline
+            m_metaline+=(char)b;                            // Normal character, add it to metaline
         }
         return;
     }
@@ -862,13 +868,13 @@ bool VS1053::connecttoSD(String sdfile){
     m_f_webstream=false;
     while(sdfile[i] != 0){  //convert ISO8859-1 to ASCII
         path[j]=sdfile[i];
-        if(path[j] == 228) path[j]=132; // Ã¤
-        if(path[j] == 246) path[j]=148; // Ã¶
-        if(path[j] == 252) path[j]=129; // Ã¼
-        if(path[j] == 196) path[j]=142; // Ã„
-        if(path[j] == 214) path[j]=153; // Ã–
-        if(path[j] == 220) path[j]=154; // Ãœ
-        if(path[j] == 223) path[j]=225; // ÃŸ
+        if(path[j] == 228) path[j]=132; // ä
+        if(path[j] == 246) path[j]=148; // ö
+        if(path[j] == 252) path[j]=129; // ü
+        if(path[j] == 196) path[j]=142; // Ä
+        if(path[j] == 214) path[j]=153; // Ö
+        if(path[j] == 220) path[j]=154; // Ü
+        if(path[j] == 223) path[j]=225; // ß
         j++;
         i++;
     }
