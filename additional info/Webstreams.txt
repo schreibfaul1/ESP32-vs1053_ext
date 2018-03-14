@@ -300,7 +300,7 @@ Life Radio                                94.136.28.10:8000/liferadio.m3u
 Life Radio - Made in Austria              94.136.28.10:8001/mia.m3u
 OE1                                       mp3stream3.apasf.apa.at/listen.pls
 ORF FM4                                   mp3stream1.apasf.apa.at:8000
-ORF RADIO Kaernten                        194.232.200.145/listen.pls
+ORF RADIO Kaernten                        194.232.200.145:8000/listen.pls
 ORF Radio Salzburg                        194.232.200.147:8000/listen.pls
 ORF Tirol                                 mp3stream10.apasf.apa.at:8000/
 Radio 24                                  streamplus14.leonex.de:24954/listen.pls
