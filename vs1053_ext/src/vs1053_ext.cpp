@@ -261,48 +261,50 @@ bool VS1053::chkhdrline(const char* str){
 void VS1053::showstreamtitle(const char *ml, bool full){
     // example for ml:
     // StreamTitle='Oliver Frank - Mega Hitmix';StreamUrl='www.radio-welle-woerthersee.at';
+    // or adw_ad='true';durationMilliseconds='10135';adId='34254';insertionType='preroll';
 
-    int8_t pos1=0, pos2=0, pos3=0, pos4=0, pos5=0;
-    String mline=ml, st="", artist="", title="";
+    int8_t pos1=0, pos2=0, pos3=0, pos4=0;
+    String mline=ml, st="", su="", ad="", artist="", title="";
+    //log_i("%s",mline.c_str());
     pos1=mline.indexOf("StreamTitle=");
     if(pos1!=-1){                               // StreamTitle found
         pos1=pos1+12;
         st=mline.substring(pos1);               // remove "StreamTitle="
-        if(st.indexOf('&')!=-1){                // can be html coded
+        if(st.indexOf('&')!=-1){                // maybe html coded
             st.replace("&Auml;", "Ä" ); st.replace("&auml;", "ä"); //HTML -> ASCII
-            st.replace("&Öuml;", "Ö" ); st.replace("&ouml;", "ö");
+            st.replace("&Ouml;", "Ö" ); st.replace("&ouml;", "ö");
             st.replace("&Uuml;", "Ü" ); st.replace("&uuml;", "ü");
             st.replace("&szlig;","ß" ); st.replace("&amp;",  "&");
             st.replace("&quot;", "\""); st.replace("&lt;",   "<");
             st.replace("&gt;",   ">" ); st.replace("&apos;", "'");
         }
-        pos2= st.indexOf(';', pos1);            // end of Streamtitle
-        if(pos2==-1) pos2=st.length();
-        st=st.substring(0,pos2);
-        pos3=st.indexOf(" - ");                 // separator artist - title
+        pos2= st.indexOf(';',1);                // end of StreamTitle, first occurence of ';'
+        if(pos2!=-1) st=st.substring(0,pos2);   // extract StreamTitle
+        if(st.startsWith("'")) st=st.substring(1,st.length()-1); // if exists remove ' at the begin and end
+        pos3=st.lastIndexOf(" - ");             // separator artist - title
         if(pos3!=-1){                           // found separator? yes
             artist=st.substring(0,pos3);        // artist not used yet
             title=st.substring(pos3+3);         // title not used yet
         }
-        if(st[0]=='\'') st=st.substring(1,st.length());               // remove ' at the begin if exists
-        if(st[st.length()-1]=='\'') st=st.substring(0,st.length()-1); // remove ' at the end if exists
         if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
-        st="Streamtile found: " + st + '\n';
+        st="StreamTitle=" + st + '\n';
         if(vs1053_info) vs1053_info(st.c_str());
     }
     pos4=mline.indexOf("StreamUrl=");
     if(pos4!=-1){                               // StreamUrl found
         pos4=pos4+10;
-        st=mline.substring(pos4);               // remove "StreamUrl="
-        pos5= st.indexOf(';', pos4);            // end of StreamUrl
-        if(pos5==-1) pos5=st.length();
-        st=st.substring(0,pos5);
-        if(st[0]=='\'') st=st.substring(1,st.length());               // remove ' at the begin if exists
-        if(st[st.length()-2]=='\'') st=st.substring(0,st.length()-2); // remove ' at the end if exists
-        if(st.length()>5){                      // StreamUrl can have reasonable content
-            st="StreamUrl found: " + st + "\n";
-            if(vs1053_info) vs1053_info(st.c_str());
-        }
+        su=mline.substring(pos4);               // remove "StreamUrl="
+        pos2= su.indexOf(';',1);                // end of StreamUrl, first occurence of ';'
+        if(pos2!=-1) su=su.substring(0,pos2);   // extract StreamUrl
+        if(su.startsWith("'")) su=su.substring(1,su.length()-1); // if exists remove ' at the begin and end
+        su="StreamUrl=" + su + '\n';
+        if(vs1053_info) vs1053_info(su.c_str());
+    }
+    pos2=mline.indexOf("adw_ad=");              // advertising,
+    if(pos2!=-1){
+       ad=mline.substring(pos2);
+       ad=ad + '\n';
+       if(vs1053_info) vs1053_info(ad.c_str());
     }
     if(!full){
         m_icystreamtitle="";                    // Unknown type
@@ -525,7 +527,7 @@ void VS1053::handlebyte(uint8_t b){
                         host=m_metaline.substring(inx + 7);}    // Yes, remove it and set host
                     else{
                         host=m_metaline;}                       // Yes, set new host
-                    log_i("connecttohost %s", host.c_str());
+                    //log_i("connecttohost %s", host.c_str());
                     connecttohost(host);                        // Connect to it
                 }
                 m_metaline="";
