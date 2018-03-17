@@ -15,7 +15,6 @@ Chill Out Zone                            air.chillout.zone:8000/radio
 Randstad Radio                            212.237.51.88:80/stream/2/
 Dance radio                               pool.cdn.lagardere.cz:80/dance-radio320.mp3
 DJ Marc                                   172.93.237.106:8024/stream
-de-piratenfamilie                         185.10.48.127:8300/
 Hi On Line Classic Radio                  mediaserv30.live-streams.nl:2199/tunein/hionlineclassic.pls
 Hi On Line Gold Radio                     mediaserv30.live-streams.nl:8000/stream
 Hi On Line Latin Radio                    mediaserv33.live-streams.nl:2199/tunein/hionlinelatin.pls
