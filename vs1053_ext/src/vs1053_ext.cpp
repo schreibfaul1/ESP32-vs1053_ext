@@ -305,6 +305,14 @@ void VS1053::showstreamtitle(const char *ml, bool full){
        ad=mline.substring(pos2);
        ad=ad + '\n';
        if(vs1053_info) vs1053_info(ad.c_str());
+       pos2=mline.indexOf("durationMilliseconds=");
+       if(pos2!=-1){
+    	  pos2+=22;
+    	  mline=mline.substring(pos2);
+    	  mline=mline.substring(0, mline.indexOf("'")-3); // extract duration in sec
+    	  mline="Intro "+ mline + "s";
+    	  if(vs1053_showstreamtitle) vs1053_showstreamtitle(mline.c_str());
+       }
     }
     if(!full){
         m_icystreamtitle="";                    // Unknown type
@@ -557,7 +565,7 @@ void VS1053::handlebyte(uint8_t b){
                 m_metaline="";
                 if(m_f_plsFile && m_f_plsTitle){    //we have both StationName and StationURL
                     m_f_plsFile=false; m_f_plsTitle=false;
-                    log_i("connecttohost %s", host.c_str());
+                    log_i("connecttohost %s", m_plsURL.c_str());
                     connecttohost(m_plsURL);        // Connect to it
                 }
             }//pls
