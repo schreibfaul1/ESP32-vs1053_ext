@@ -80,6 +80,8 @@ void vs1053_bitrate(const char *br){		    // called from vs1053
       Serial.println(br);                           // bitrate of current stream
 }
 ```
+Breadboard
+![Breadboard](https://github.com/schreibfaul1/ESP32-vs1053_ext/blob/master/additional%20info/Breadboard.jpg)
 
 ESP32 developerboard connections
 ![Connections](https://github.com/schreibfaul1/ESP32-vs1053_ext/blob/master/additional%20info/ESP32_dev_board.jpg)
