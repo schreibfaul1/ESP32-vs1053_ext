@@ -8,11 +8,11 @@ Also it can play mp3-files from SD Card.<br>
 The class provides optional events:<br>
 vs1053_showstreaminfo &nbsp;&nbsp;&nbsp; Shows th connexted URL<br>
 vs1053_showstreamtitle &nbsp;&nbsp;&nbsp; The played title<br>
-vs1053_showstation &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; The name of the connected station<br>
-vs1053_info &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;  Additional information for debugging<br>
-vs1053_bitrate &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;This is the bitrate of the set station<br>
-vs1053_eof_mp3  &nbsp; &nbsp; &nbsp; &nbsp;  &nbsp; &nbsp; &nbsp; mp3 player reaches the end of file<br>
-vs1053_commercial  &nbsp; is there a commercial at the begin, show the duration in seconds<br>
+vs1053_showstation &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; The name of the connected station<br>
+vs1053_info &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;  Additional information for debugging<br>
+vs1053_bitrate &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; This is the bitrate of the set station<br>
+vs1053_eof_mp3  &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; mp3 player reaches the end of file<br>
+vs1053_commercial  &nbsp;&nbsp;&nbsp;&nbsp; is there a commercial at the begin, show the duration in seconds<br>
 
 ``` c++
 #include "Arduino.h"
