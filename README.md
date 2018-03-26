@@ -10,7 +10,7 @@ vs1053_showstreaminfo &nbsp;&nbsp;&nbsp; shows th connexted URL<br>
 vs1053_showstreamtitle &nbsp;&nbsp;&nbsp; the played title<br>
 vs1053_showstation &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; the name of the connected station<br>
 vs1053_info &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; additional information for debugging<br>
-vs1053_bitrate &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; This is the bitrate of the set station<br>
+vs1053_bitrate &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; this is the bitrate of the set station<br>
 vs1053_eof_mp3 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; mp3 player reaches the end of file<br>
 vs1053_commercial  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; is there a commercial at the begin, show the duration in seconds<br>
 
