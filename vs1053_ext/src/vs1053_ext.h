@@ -15,7 +15,7 @@ extern __attribute__((weak)) void vs1053_showstation(const char*);
 extern __attribute__((weak)) void vs1053_showstreaminfo(const char*);
 extern __attribute__((weak)) void vs1053_eof_mp3(const char*);
 extern __attribute__((weak)) void vs1053_bitrate(const char*);
-
+extern __attribute__((weak)) void vs1053_commercial(const char*);
 
 #define VS1053_HEADER          2    //const for datamode
 #define VS1053_DATA            4
