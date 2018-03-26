@@ -265,6 +265,7 @@ void VS1053::showstreamtitle(const char *ml, bool full){
 
     int8_t pos1=0, pos2=0, pos3=0, pos4=0;
     String mline=ml, st="", su="", ad="", artist="", title="";
+    static String st_remember="";
     //log_i("%s",mline.c_str());
     pos1=mline.indexOf("StreamTitle=");
     if(pos1!=-1){                               // StreamTitle found
@@ -286,7 +287,11 @@ void VS1053::showstreamtitle(const char *ml, bool full){
             artist=st.substring(0,pos3);        // artist not used yet
             title=st.substring(pos3+3);         // title not used yet
         }
-        if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
+        if(st_remember!=st){ // show only changes
+            if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
+        }
+
+        st_remember=st;
         st="StreamTitle=" + st + '\n';
         if(vs1053_info) vs1053_info(st.c_str());
     }
@@ -310,8 +315,7 @@ void VS1053::showstreamtitle(const char *ml, bool full){
     	  pos2+=22;
     	  mline=mline.substring(pos2);
     	  mline=mline.substring(0, mline.indexOf("'")-3); // extract duration in sec
-    	  mline="Intro "+ mline + "s";
-    	  if(vs1053_showstreamtitle) vs1053_showstreamtitle(mline.c_str());
+    	  if(vs1053_commercial) vs1053_commercial(mline.c_str());
        }
     }
     if(!full){
@@ -451,7 +455,8 @@ void VS1053::handlebyte(uint8_t b){
                 // Sometimes it is just other info like:
                 // "StreamTitle='60s 03 05 Magic60s';StreamUrl='';"
                 // Isolate the StreamTitle, remove leading and trailing quotes if present.
-                if( !m_f_localfile) showstreamtitle(m_metaline.c_str(), true);         // Show artist and title if present in metadata
+                //log_i("ST %s", m_metaline.c_str());
+            	if( !m_f_localfile) showstreamtitle(m_metaline.c_str(), true);         // Show artist and title if present in metadata
             }
             if(m_metaline.length() > 1500){                     // Unlikely metaline length?
                 if(vs1053_info) vs1053_info("Metadata block to long! Skipping all Metadata from now on.\n");
@@ -519,7 +524,11 @@ void VS1053::handlebyte(uint8_t b){
                         inx=m_metaline.indexOf(",");            // Comma in this line?
                         if(inx > 0){
                             // Show artist and title if present in metadata
-                            showstreamtitle(m_metaline.substring(inx + 1).c_str(), true);}}}
+                            //if(vs1053_showstation) vs1053_showstation(m_metaline.substring(inx + 1).c_str());
+                            if(vs1053_info) vs1053_info(m_metaline.substring(inx + 1).c_str());
+                        }
+                    }
+                }
                 if(m_metaline.startsWith("#")){                 // Commentline?
                     m_metaline="";
                     return;}                                    // Ignore commentlines
@@ -891,7 +900,7 @@ bool VS1053::connecttoSD(String sdfile){
     path[j]=0;
     m_mp3title=sdfile.substring(sdfile.lastIndexOf('/') + 1, sdfile.length());
     showstreamtitle(m_mp3title.c_str(), true);
-    sprintf(sbuf, "Reading file: %s\n", path);
+    sprintf(sbuf, "Reading file: %s", path);
     if(vs1053_info) vs1053_info(sbuf);
     fs::FS &fs=SD;
     mp3file=fs.open(path);
