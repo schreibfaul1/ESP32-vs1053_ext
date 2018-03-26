@@ -10,6 +10,9 @@ vs1053_showstreaminfo &nbsp;&nbsp;&nbsp; Shows th connexted URL<br>
 vs1053_showstreamtitle &nbsp;&nbsp;&nbsp; The played title<br>
 vs1053_showstation &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; The name of the connected station<br>
 vs1053_info &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp;  Additional information for debugging<br>
+vs1053_bitrate &nbsp; &nbsp; &nbsp; &nbsp; This is the bitrate of the set station
+vs1053_eof_mp3  &nbsp; &nbsp; &nbsp; &nbsp; mp3 player reaches the end of file
+vs1053_commercial  &nbsp; is ther a commercial at the begin, show the duration in seconds
 
 ``` c++
 #include "Arduino.h"
@@ -41,7 +44,8 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED) delay(1500);
     mp3.begin();
     mp3.setVolume(volume);
-    mp3.connecttohost("stream.landeswelle.de/lwt/mp3-192"); // mp3 192kb/s
+    mp3.connecttohost("streambbr.ir-media-tec.com/berlin/mp3-128/vtuner_web_mp3/");
+        //mp3.connecttohost("stream.landeswelle.de/lwt/mp3-192"); // mp3 192kb/s
 	//mp3.connecttohost("listen.ai-radio.org:8000/320.ogg?cc=DE&now=1511557873.987&");  // ogg
 	//mp3.connecttohost("tophits.radiomonster.fm/320.mp3");  //bitrate 320k
 	//mp3.connecttohost("hellwegradiowest.radiovonhier.de/high/stream.mp3"); // Transfer Encoding: chunked
@@ -77,7 +81,11 @@ void vs1053_eof_mp3(const char *info){              // called from vs1053
 }
 void vs1053_bitrate(const char *br){		    // called from vs1053
       Serial.print("BITRATE: ");
-      Serial.println(br);                           // bitrate of current stream
+      Serial.println(String(br)+"kBit/s");          // bitrate of current stream
+}
+void vs1053_commercial(const char *info){           // called from vs1053
+    Serial.print("ADVERTISING: ");                  // info is the duration of advertising
+    Serial.println(String(info)+"sec");
 }
 ```
 Breadboard
