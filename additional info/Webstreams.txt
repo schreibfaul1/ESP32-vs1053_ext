@@ -419,4 +419,6 @@ Virgin RADIO                              mp3lg4.tdf-cdn.com/9243/lag_164753.mp3
 known streams not working  with VS1053_ext
 //______________________________________________________________________
 www.fro.at:8008/fro-128.ogg    no sound (Radio FROStream 105.5 MHz)
+www.fro.at:8008/fro-64.ogg     no sound (in Winamp okay)
 stream.tbfunk.de/okn.mp3       heavy metadata
+ 
