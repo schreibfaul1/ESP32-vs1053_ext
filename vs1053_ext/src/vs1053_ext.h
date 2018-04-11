@@ -79,6 +79,7 @@ class VS1053
     uint16_t        m_datamode=0;                   // Statemaschine
     String          m_metaline ;                    // Readable line in metadata
     String          m_mp3title;                     // Name of the mp3 file
+    String          m_lastHost="";                  // Store the last URL to a webstream
     bool            m_chunked = false ;             // Station provides chunked transfer
     bool            m_ctseen=false;                 // First line of header seen or not
     bool            m_firstchunk=true;              // First chunk as input
@@ -100,6 +101,7 @@ class VS1053
     boolean         m_f_plsFile=false;              // Set if URL is known
     boolean         m_f_plsTitle=false;             // Set if StationName is knowm
     boolean         m_f_ogg=false;                  // Set if oggstream
+    boolean         m_f_stream_ready=false;         // Set after connecttohost and first streamdata are available
     String          m_plsURL;
     String          m_plsStationName;
     const char volumetable[22]={   0,50,60,65,70,75,80,82,84,86,
