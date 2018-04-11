@@ -574,7 +574,7 @@ void VS1053::handlebyte(uint8_t b){
                 m_metaline="";
                 if(m_f_plsFile && m_f_plsTitle){    //we have both StationName and StationURL
                     m_f_plsFile=false; m_f_plsTitle=false;
-                    log_i("connecttohost %s", m_plsURL.c_str());
+                    //log_i("connecttohost %s", m_plsURL.c_str());
                     connecttohost(m_plsURL);        // Connect to it
                 }
             }//pls
@@ -631,7 +631,8 @@ void VS1053::loop(){
     uint32_t av=0;                                          // available in stream (uin16_t is to small by playing from SD)
     static uint16_t rcount=0;                               // max bytes handover to the player
     static uint16_t chunksize=0;                            // Chunkcount read from stream
-    static uint16_t count=0;                                // bytecounter between metadata
+    static uint16_t count=0;                                // Bytecounter between metadata
+    static uint16_t i=0;                                    // Count loops if ringbuffer is empty
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_localfile){                                      // Playing file from SD card?
@@ -666,7 +667,7 @@ void VS1053::loop(){
 
         if(m_datamode == VS1053_PLAYLISTDATA){
             if(m_t0+49<millis()) {
-                log_i("terminate metaline after 50ms");     // if mo data comes from host
+                //log_i("terminate metaline after 50ms");     // if mo data comes from host
                 handlebyte('\n');                           // send LF
             }
         }
@@ -771,7 +772,19 @@ void VS1053::loop(){
                 }
             }
         }
-
+        if((m_f_stream_ready==false)&&(ringused()!=0)){ // first streamdata recognised
+            m_f_stream_ready=true;
+        }
+        if(m_f_stream_ready==true){
+            if(ringused()==0){  // empty buffer, broken stream or bad bitrate?
+                i++;
+                if(i>40000){    // wait several seconds
+                    i=0;
+                    if(vs1053_info) vs1053_info("Stream lost -> try new connection\n");
+                    connecttohost(m_lastHost);} // try a new connection
+            }
+            else i=0;
+        }
     } // end if(webstream)
 }
 //---------------------------------------------------------------------------------------
@@ -804,7 +817,10 @@ bool VS1053::connecttohost(String host){
     stop_mp3client();                                     // Disconnect if still connected
     m_f_localfile=false;
     m_f_webstream=true;
-
+    if(m_lastHost!=host){                                 // New host or reconnection?
+        m_f_stream_ready=false;
+        m_lastHost=host;                                  // Remember the current host
+    }
     sprintf(sbuf, "Connect to new host: %s\n", host.c_str());
     if(vs1053_info) vs1053_info(sbuf);
 
