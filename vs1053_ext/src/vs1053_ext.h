@@ -16,6 +16,7 @@ extern __attribute__((weak)) void vs1053_showstreaminfo(const char*);
 extern __attribute__((weak)) void vs1053_eof_mp3(const char*);
 extern __attribute__((weak)) void vs1053_bitrate(const char*);
 extern __attribute__((weak)) void vs1053_commercial(const char*);
+extern __attribute__((weak)) void vs1053_icyurl(const char*);
 
 #define VS1053_HEADER          2    //const for datamode
 #define VS1053_DATA            4
@@ -80,6 +81,7 @@ class VS1053
     String          m_metaline ;                    // Readable line in metadata
     String          m_mp3title;                     // Name of the mp3 file
     String          m_lastHost="";                  // Store the last URL to a webstream
+    String          m_icyurl="";                    // Store ie icy-url if received
     bool            m_chunked = false ;             // Station provides chunked transfer
     bool            m_ctseen=false;                 // First line of header seen or not
     bool            m_firstchunk=true;              // First chunk as input

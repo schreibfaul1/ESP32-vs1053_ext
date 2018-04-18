@@ -264,7 +264,7 @@ void VS1053::showstreamtitle(const char *ml, bool full){
     // or adw_ad='true';durationMilliseconds='10135';adId='34254';insertionType='preroll';
 
     int8_t pos1=0, pos2=0, pos3=0, pos4=0;
-    String mline=ml, st="", su="", ad="", artist="", title="";
+    String mline=ml, st="", su="", ad="", artist="", title="", icyurl="";
     static String st_remember="";
     //log_i("%s",mline.c_str());
     pos1=mline.indexOf("StreamTitle=");
@@ -405,6 +405,11 @@ void VS1053::handlebyte(uint8_t b){
                         if(vs1053_info) vs1053_info("chunked data transfer\n");
                         m_chunkcount=0;                         // Expect chunkcount in DATA
                     }
+                }
+                else if(lcml.startsWith("icy-url:")){
+                    m_icyurl=m_metaline.substring(8);             // Get the URL
+                    m_icyurl.trim();
+                    if(vs1053_icyurl) vs1053_icyurl(m_icyurl.c_str());
                 }
                 else{
                     // all other
@@ -632,7 +637,7 @@ void VS1053::loop(){
     static uint16_t rcount=0;                               // max bytes handover to the player
     static uint16_t chunksize=0;                            // Chunkcount read from stream
     static uint16_t count=0;                                // Bytecounter between metadata
-    static uint16_t i=0;                                    // Count loops if ringbuffer is empty
+    static uint32_t i=0;                                    // Count loops if ringbuffer is empty
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_localfile){                                      // Playing file from SD card?
@@ -778,7 +783,7 @@ void VS1053::loop(){
         if(m_f_stream_ready==true){
             if(ringused()==0){  // empty buffer, broken stream or bad bitrate?
                 i++;
-                if(i>40000){    // wait several seconds
+                if(i>150000){    // wait several seconds
                     i=0;
                     if(vs1053_info) vs1053_info("Stream lost -> try new connection\n");
                     connecttohost(m_lastHost);} // try a new connection
@@ -895,28 +900,32 @@ bool VS1053::connecttohost(String host){
 //---------------------------------------------------------------------------------------
 bool VS1053::connecttoSD(String sdfile){
 
-    uint16_t i=0, j=0;
+    const uint8_t ascii[60]={
+          //196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215,   ISO
+            142, 143, 146, 128, 000, 144, 000, 000, 000, 000, 000, 000, 000, 165, 000, 000, 000, 000, 153, 000, //ASCII
+          //216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235,   ISO
+            000, 000, 000, 000, 154, 000, 000, 225, 133, 000, 000, 000, 132, 143, 145, 135, 138, 130, 136, 137, //ASCII
+          //236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255    ISO
+            000, 161, 140, 139, 000, 164, 000, 162, 147, 000, 148, 000, 000, 000, 163, 150, 129, 000, 000, 152};//ASCII
+
+
+    uint16_t i=0, s=0;
 
     stopSong();
     stop_mp3client();                                    // Disconnect if still connected
     m_f_localfile=true;
     m_f_webstream=false;
     while(sdfile[i] != 0){  //convert ISO8859-1 to ASCII
-        path[j]=sdfile[i];
-        if(path[j] == 228) path[j]=132; // ä
-        if(path[j] == 246) path[j]=148; // ö
-        if(path[j] == 252) path[j]=129; // ü
-        if(path[j] == 196) path[j]=142; // Ä
-        if(path[j] == 214) path[j]=153; // Ö
-        if(path[j] == 220) path[j]=154; // Ü
-        if(path[j] == 223) path[j]=225; // ß
-        j++;
-        i++;
+        path[i]=sdfile[i];
+        if(path[i] > 195){
+            s=ascii[path[i]-196];
+            if(s!=0) path[i]=s; // found a related ascii sign
+        } i++;
     }
-    path[j]=0;
+    path[i]=0;
     m_mp3title=sdfile.substring(sdfile.lastIndexOf('/') + 1, sdfile.length());
     showstreamtitle(m_mp3title.c_str(), true);
-    sprintf(sbuf, "Reading file: %s", path);
+    sprintf(sbuf, "Reading file: %s\n", path);
     if(vs1053_info) vs1053_info(sbuf);
     fs::FS &fs=SD;
     mp3file=fs.open(path);
