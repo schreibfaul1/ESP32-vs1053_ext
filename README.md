@@ -85,12 +85,12 @@ void vs1053_bitrate(const char *br){		    // called from vs1053
       Serial.println(String(br)+"kBit/s");          // bitrate of current stream
 }
 void vs1053_commercial(const char *info){           // called from vs1053
-    Serial.print("ADVERTISING: ");                  // info is the duration of advertising
-    Serial.println(String(info)+"sec");
+    Serial.print("ADVERTISING: ");
+    Serial.println(String(info)+"sec");             // info is the duration of advertising
 }
 void vs1053_icyurl(const char *info){               // called from vs1053
     Serial.print("Homepage: ");  
-    Serial.println(info);                           // show URL
+    Serial.println(info);                           // info contains the URL
 }
 ```
 Breadboard
