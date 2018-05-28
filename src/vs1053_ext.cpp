@@ -272,10 +272,10 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         pos1=pos1+12;
         st=mline.substring(pos1);               // remove "StreamTitle="
         if(st.indexOf('&')!=-1){                // maybe html coded
-            st.replace("&Auml;", "Ä" ); st.replace("&auml;", "ä"); //HTML -> ASCII
-            st.replace("&Ouml;", "Ö" ); st.replace("&ouml;", "ö");
-            st.replace("&Uuml;", "Ü" ); st.replace("&uuml;", "ü");
-            st.replace("&szlig;","ß" ); st.replace("&amp;",  "&");
+            st.replace("&Auml;", "ï¿½" ); st.replace("&auml;", "ï¿½"); //HTML -> ASCII
+            st.replace("&Ouml;", "ï¿½" ); st.replace("&ouml;", "ï¿½");
+            st.replace("&Uuml;", "ï¿½" ); st.replace("&uuml;", "ï¿½");
+            st.replace("&szlig;","ï¿½" ); st.replace("&amp;",  "&");
             st.replace("&quot;", "\""); st.replace("&lt;",   "<");
             st.replace("&gt;",   ">" ); st.replace("&apos;", "'");
         }
@@ -373,10 +373,9 @@ void VS1053::handlebyte(uint8_t b){
                         m_icyname=="";
                         m_f_ogg=true;
                     }
-
                 }
                 else if(lcml.startsWith("location:")){
-                    host=m_metaline.substring(lcml.indexOf("http://")+7,lcml.length());// use metaline instead lcml
+                    host=m_metaline.substring(lcml.indexOf("http"),lcml.length());// use metaline instead lcml
                     if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
                     sprintf(sbuf, "redirect to new host %s\n", host.c_str());
                     if(vs1053_info) vs1053_info(sbuf);
@@ -496,6 +495,16 @@ void VS1053::handlebyte(uint8_t b){
             m_LFcount++;                                        // Count linefeeds
             sprintf(sbuf, "Playlistheader: %s\n", m_metaline.c_str());  // Show playlistheader
             if(vs1053_info) vs1053_info(sbuf);
+            lcml=m_metaline;                                // Use lower case for compare
+            lcml.toLowerCase();
+            lcml.trim();
+            if(lcml.startsWith("location:")){
+                 host=m_metaline.substring(lcml.indexOf("http"),lcml.length());// use metaline instead lcml
+                if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
+                sprintf(sbuf, "redirect to new host %s\n", host.c_str());
+                if(vs1053_info) vs1053_info(sbuf);
+                connecttohost(host);
+            }
             m_metaline="";                                      // Ready for next line
             if(m_LFcount == 2)
                     {
@@ -818,6 +827,7 @@ bool VS1053::connecttohost(String host){
     int port=80;                                          // Port number for host
     String extension="/";                                 // May be like "/mp3" in "skonto.ls.lv:8002/mp3"
     String hostwoext;                                     // Host without extension and portnumber
+    boolean ssl=false;
 
     stopSong();
     stop_mp3client();                                     // Disconnect if still connected
@@ -846,7 +856,9 @@ bool VS1053::connecttohost(String host){
     m_chunked=false;                                        // Assume not chunked
     setDatamode(VS1053_HEADER);                             // Handle header
 
-    if(host.startsWith("http://")) host=host.substring(7);
+    if(host.startsWith("http://")) {host=host.substring(7); ssl=false;}
+    if(host.startsWith("https://")){host=host.substring(8); ssl=true;}
+    // ssl not supported yet because lack of memory
 
     if(host.endsWith(".m3u")||
             host.endsWith(".pls")||
@@ -859,7 +871,6 @@ bool VS1053::connecttohost(String host){
         sprintf(sbuf, "Playlist request, entry %d\n", m_playlist_num); // Most of the time there are zero bytes of metadata
         if(vs1053_info) vs1053_info(sbuf);
     }
-
 
     // In the URL there may be an extension, like noisefm.ru:8000/play.m3u&t=.m3u
     inx=host.indexOf("/");                                  // Search for begin of extension
@@ -881,14 +892,14 @@ bool VS1053::connecttohost(String host){
     if(client.connect(hostwoext.c_str(), port)){
         if(vs1053_info) vs1053_info("Connected to server\n");
         // This will send the request to the server. Request metadata.
-        client.print(String("GET ") +
-                extension +
-                String(" HTTP/1.1\r\n") +
-                String("Host: ") +
-                hostwoext +
-                String("\r\n") +
-                String("Icy-MetaData:1\r\n") +
-                String("Connection: close\r\n\r\n"));
+            client.print(String("GET ") +
+            extension +
+            String(" HTTP/1.1\r\n") +
+            String("Host: ") +
+            hostwoext +
+            String("\r\n") +
+            String("Icy-MetaData:1\r\n") +
+            String("Connection: close\r\n\r\n"));
         return true;
     }
     sprintf(sbuf, "Request %s failed!\n", host.c_str());
@@ -916,11 +927,11 @@ bool VS1053::connecttoSD(String sdfile){
     stop_mp3client();                                    // Disconnect if still connected
     m_f_localfile=true;
     m_f_webstream=false;
-    while(sdfile[i] != 0){  //convert ISO8859-1 to ASCII
+    while(sdfile[i] != 0){  //convert UTF8 to ASCII
         path[i]=sdfile[i];
         if(path[i] > 195){
             s=ascii[path[i]-196];
-            if(s!=0) path[i]=s; // found a related ascii sign
+            if(s!=0) path[i]=s; // found a related ASCII sign
         } i++;
     }
     path[i]=0;
