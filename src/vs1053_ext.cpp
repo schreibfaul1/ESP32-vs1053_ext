@@ -858,7 +858,7 @@ bool VS1053::connecttohost(String host){
 
     if(host.startsWith("http://")) {host=host.substring(7); ssl=false;}
     if(host.startsWith("https://")){host=host.substring(8); ssl=true;}
-    // ssl not supported yet because lack of memory
+    // ssl not supported yet
 
     if(host.endsWith(".m3u")||
             host.endsWith(".pls")||
