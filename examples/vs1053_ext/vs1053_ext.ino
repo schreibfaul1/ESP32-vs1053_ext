@@ -27,6 +27,7 @@ void setup() {
     mp3.begin();
     mp3.setVolume(volume);
     mp3.connecttohost("edge.audio.3qsdn.com/senderkw-mp3");
+    //mp3.connecttohost("https://icecast-qmusicnl-cdp.triple-it.nl/Qmusic_nl_fouteuur_96.mp3");
 }
 
 // The loop function is called in an endless loop
