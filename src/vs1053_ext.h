@@ -4,7 +4,7 @@
 
 #include "Arduino.h"
 #include "SPI.h"
-#include "WiFiClient.h"
+#include "WiFiClientSecure.h"
 #include "SD.h"
 #include "FS.h"
 
@@ -29,6 +29,7 @@ class VS1053
 {
   private:
     WiFiClient client;
+    WiFiClientSecure clientsecure;
     File mp3file;
   private:
 
@@ -74,7 +75,7 @@ class VS1053
     uint16_t m_ringspace=0;                         // Ringbuffer free space
     uint16_t m_rcount=0;                            // Ringbuffer used space
 
-
+    boolean         m_ssl=false;
     uint32_t        m_t0;                           // Keep alive, end a playlist
     uint8_t         m_endFillByte ;                 // Byte to send when stopping song
     uint16_t        m_datamode=0;                   // Statemaschine

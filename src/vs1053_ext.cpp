@@ -272,10 +272,10 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         pos1=pos1+12;
         st=mline.substring(pos1);               // remove "StreamTitle="
         if(st.indexOf('&')!=-1){                // maybe html coded
-            st.replace("&Auml;", "�" ); st.replace("&auml;", "�"); //HTML -> ASCII
-            st.replace("&Ouml;", "�" ); st.replace("&ouml;", "�");
-            st.replace("&Uuml;", "�" ); st.replace("&uuml;", "�");
-            st.replace("&szlig;","�" ); st.replace("&amp;",  "&");
+            st.replace("&Auml;", "Ä" ); st.replace("&auml;", "ä"); //HTML -> ASCII
+            st.replace("&Ouml;", "Ö" ); st.replace("&ouml;", "o");
+            st.replace("&Uuml;", "Ü" ); st.replace("&uuml;", "ü");
+            st.replace("&szlig;","ß" ); st.replace("&amp;",  "&");
             st.replace("&quot;", "\""); st.replace("&lt;",   "<");
             st.replace("&gt;",   ">" ); st.replace("&apos;", "'");
         }
@@ -667,12 +667,14 @@ void VS1053::loop(){
     }
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_webstream){                                      // Playing file from URL?
-        av=client.available();// Available from stream
+        if(m_ssl==false) av=client.available();// Available from stream
+        if(m_ssl==true)  av=clientsecure.available();// Available from stream
         if(av){
             m_ringspace=m_ringbfsiz - m_rcount;
             part=m_ringbfsiz - m_rbwindex;                  // Part of length to xfer
             if(part>m_ringspace)part=m_ringspace;
-            res=client.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
+            if(m_ssl==false) res=client.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
+            if(m_ssl==true)  res=clientsecure.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
             if(res>0){
                 m_rcount+=res;
                 m_rbwindex+=res;
@@ -827,8 +829,7 @@ bool VS1053::connecttohost(String host){
     int port=80;                                          // Port number for host
     String extension="/";                                 // May be like "/mp3" in "skonto.ls.lv:8002/mp3"
     String hostwoext;                                     // Host without extension and portnumber
-    boolean ssl=false;
-
+    String headerdata="";
     stopSong();
     stop_mp3client();                                     // Disconnect if still connected
     m_f_localfile=false;
@@ -854,11 +855,12 @@ bool VS1053::connecttohost(String host){
     m_bitrate=0;                                            // No bitrate yet
     m_firstchunk=true;                                      // First chunk expected
     m_chunked=false;                                        // Assume not chunked
+    m_ssl=false;
     setDatamode(VS1053_HEADER);                             // Handle header
 
-    if(host.startsWith("http://")) {host=host.substring(7); ssl=false;}
-    if(host.startsWith("https://")){host=host.substring(8); ssl=true;}
-    // ssl not supported yet
+    if(host.startsWith("http://")) {host=host.substring(7); m_ssl=false; ;}
+    if(host.startsWith("https://")){host=host.substring(8); m_ssl=true;}
+    clientsecure.stop(); clientsecure.flush(); // release memory
 
     if(host.endsWith(".m3u")||
             host.endsWith(".pls")||
@@ -889,19 +891,28 @@ bool VS1053::connecttohost(String host){
             hostwoext.c_str(), port, extension.c_str());
     if(vs1053_info) vs1053_info(sbuf);
     if(vs1053_showstreaminfo) vs1053_showstreaminfo(sbuf);
-    if(client.connect(hostwoext.c_str(), port)){
-        if(vs1053_info) vs1053_info("Connected to server\n");
-        // This will send the request to the server. Request metadata.
-            client.print(String("GET ") +
-            extension +
-            String(" HTTP/1.1\r\n") +
-            String("Host: ") +
-            hostwoext +
-            String("\r\n") +
-            String("Icy-MetaData:1\r\n") +
-            String("Connection: close\r\n\r\n"));
-        return true;
+    String resp=String("GET ") + extension +
+                String(" HTTP/1.1\r\n") +
+                String("Host: ") + hostwoext +
+                String("\r\n") +
+                String("Icy-MetaData:1\r\n") +
+                String("Connection: close\r\n\r\n");
+
+    if(m_ssl==false){
+        if(client.connect(hostwoext.c_str(), port)){
+            if(vs1053_info) vs1053_info("Connected to server\n");
+            client.print(resp);
+            return true;
+        }
     }
+    if(m_ssl==true){
+        if(clientsecure.connect(hostwoext.c_str(), 443)){
+            if(vs1053_info) vs1053_info("SSL/TLS Connected to server\n");
+            clientsecure.print(resp);
+            return true;
+        }
+    }
+
     sprintf(sbuf, "Request %s failed!\n", host.c_str());
     if(vs1053_info) vs1053_info(sbuf);
     if(vs1053_showstation) vs1053_showstation("");
