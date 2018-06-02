@@ -823,6 +823,7 @@ void VS1053::stop_mp3client(){
     write_register(SCI_VOL, v);
 }
 //---------------------------------------------------------------------------------------
+
 bool VS1053::connecttohost(String host){
 
     int inx;                                              // Position of ":" in hostname
@@ -891,6 +892,7 @@ bool VS1053::connecttohost(String host){
             hostwoext.c_str(), port, extension.c_str());
     if(vs1053_info) vs1053_info(sbuf);
     if(vs1053_showstreaminfo) vs1053_showstreaminfo(sbuf);
+
     String resp=String("GET ") + extension +
                 String(" HTTP/1.1\r\n") +
                 String("Host: ") + hostwoext +
@@ -935,14 +937,15 @@ bool VS1053::connecttoSD(String sdfile){
     uint16_t i=0, s=0;
 
     stopSong();
-    stop_mp3client();                                    // Disconnect if still connected
+    stop_mp3client();                           // Disconnect if still connected
+    clientsecure.stop(); clientsecure.flush();  // release memory if allocated
     m_f_localfile=true;
     m_f_webstream=false;
-    while(sdfile[i] != 0){  //convert UTF8 to ASCII
+    while(sdfile[i] != 0){                      //convert UTF8 to ASCII
         path[i]=sdfile[i];
         if(path[i] > 195){
             s=ascii[path[i]-196];
-            if(s!=0) path[i]=s; // found a related ASCII sign
+            if(s!=0) path[i]=s;                 // found a related ASCII sign
         } i++;
     }
     path[i]=0;
@@ -957,4 +960,174 @@ bool VS1053::connecttoSD(String sdfile){
         return false;
     }
     return true;
+}
+//---------------------------------------------------------------------------------------
+bool VS1053::connecttospeech(String speech, String lang){
+    String host="translate.google.com";
+    String path="/translate_tts";
+    m_f_localfile=false;
+    m_f_webstream=true;
+    m_ssl=true;
+
+    stopSong();
+    stop_mp3client();                           // Disconnect if still connected
+    clientsecure.stop(); clientsecure.flush();  // release memory if allocated
+
+    String resp=   String("GET / HTTP/1.0\r\n") +
+                   String("Host: ") + host + String("\r\n") +
+                   String("User-Agent: GoogleTTS for ESP32/1.0.0\r\n") +
+                   String("Accept-Encoding: identity\r\n") +
+                   String("Accept: text/html\r\n\r\n");
+
+    if (!clientsecure.connect(host.c_str(), 443)) {
+        Serial.println("Connection failed");
+        return false;
+    }
+    clientsecure.print(resp);
+
+    while (clientsecure.connected()) {  // read the header
+        String line = clientsecure.readStringUntil('\n');
+        line+="\n";
+//      if(vs1053_info) vs1053_info(line.c_str());
+        if (line == "\r\n") break;
+    }
+
+    String tkkFunc;
+    char ch;
+    do {  // search for TKK
+        tkkFunc = "";
+        clientsecure.readBytes(&ch, 1);
+        if (ch != 'T') continue;
+        tkkFunc += String(ch);
+        clientsecure.readBytes(&ch, 1);
+        if (ch != 'K') continue;
+        tkkFunc += String(ch);
+        clientsecure.readBytes(&ch, 1);
+        if (ch != 'K') continue;
+        tkkFunc += String(ch);
+    } while(tkkFunc.length() < 3);
+    tkkFunc +=  clientsecure.readStringUntil('}');
+    int head = tkkFunc.indexOf("3d") + 2;
+    int tail = tkkFunc.indexOf(";", head);
+    char* buf;
+    unsigned long a = strtoul(tkkFunc.substring(head, tail).c_str(), &buf, 10);
+    head = tkkFunc.indexOf("3d", tail) + 2;
+    tail = tkkFunc.indexOf(";", head);
+    unsigned long b = strtoul(tkkFunc.substring(head, tail).c_str(), &buf, 10);
+    head = tkkFunc.indexOf("return ", tail) + 7;
+    tail = tkkFunc.indexOf("+", head);
+    String key1 = tkkFunc.substring(head, tail);
+    String key2  = String(a+b);
+    long long int a1, b1;
+    a1 = b1 = strtoll(key1.c_str(), NULL, 10);
+    int f;
+    int len = speech.length();
+    String para;
+    for (f = 0; f < len; f++) {
+        a1 += speech[f];
+        a1 = XL(a1, "+-a^+6");
+     }
+     a1 = XL(a1, "+-3^+b+-f");
+     a1 = a1 ^ (strtoll(key2.c_str(), NULL, 10));
+     if (0 > a1) {
+       a1 = (a1 & 2147483647) + 2147483648;
+     }
+     a1 = a1 % 1000000;
+     String token=String(lltoa(a1, 10)) + '.' + String(lltoa(a1 ^ b1, 10));
+     int i,j;
+     const char* t = speech.c_str();
+     for(i=0,j=0;i<strlen(t);i++) {
+       if (t[i] < 0x80 || t[i] > 0xbf) {
+         j++;
+       }
+     }
+     String tts= String("https://") + host + path +
+                        "?ie=UTF-8&q=" + urlencode(speech) +
+                        "&tl=" + lang +
+                        "&textlen=" + String(j) +
+                        "&tk=" + token +
+                        "&total=1&idx=0&client=t&prev=input&ttsspeed=1";
+
+    clientsecure.stop();  clientsecure.flush();
+
+    resp=   String("GET ") + tts + String("HTTP/1.1\r\n") +
+            String("Host: ") + host + String("\r\n") +
+            String("Connection: close\r\n\r\n");
+
+    if (!clientsecure.connect(host.c_str(), 443)) {
+        Serial.println("Connection failed");
+        return false;
+    }
+    clientsecure.print(resp);
+
+    while (clientsecure.connected()) {
+        String line = clientsecure.readStringUntil('\n');
+        line+="\n";
+//      if(vs1053_info) vs1053_info(line.c_str());
+        if (line == "\r\n") break;
+    }
+    uint8_t mp3buff[32];
+    startSong();
+    while(clientsecure.available() > 0) {
+        uint8_t bytesread = clientsecure.readBytes(mp3buff, 32);
+        sdi_send_buffer(mp3buff, bytesread);
+    }
+    clientsecure.stop();  clientsecure.flush();
+    if(vs1053_eof_speech) vs1053_eof_speech(speech.c_str());
+    return true;
+}
+//---------------------------------------------------------------------------------------
+long long int VS1053::XL (long long int a, const char* b) {
+  int len = strlen(b);
+  for (int c = 0; c < len - 2; c += 3) {
+    int  d = (long long int)b[c + 2];
+    d = d >= 97 ? d - 87 : d - 48;
+    d = (b[c + 1] == '+' ? a >> d : a << d);
+    a = b[c] == '+' ? (a + d) & 4294967295 : a ^ d;
+  }
+  return a;
+}
+//---------------------------------------------------------------------------------------
+char* VS1053::lltoa(long long val, int base){
+
+    static char buf[64] = {0};
+    static char chn=0;
+    int i = 62;
+    int sign = (val < 0);
+    if(sign) val = -val;
+
+    if(val == 0) return &chn;
+
+    for(; val && i ; --i, val /= base) {
+        buf[i] = "0123456789abcdef"[val % base];
+    }
+
+    if(sign) {
+        buf[i--] = '-';
+    }
+    return &buf[i+1];
+}
+//---------------------------------------------------------------------------------------
+String VS1053::urlencode(String str)
+{
+    String encodedString="";
+    char c;
+    char code0;
+    char code1;
+    for (int i =0; i < str.length(); i++){
+        c=str.charAt(i);
+        if (c == ' ') encodedString+= '+';
+        else if (isalnum(c)) encodedString+=c;
+        else{
+            code1=(c & 0xf)+'0';
+            if ((c & 0xf) >9) code1=(c & 0xf) - 10 + 'A';
+            c=(c>>4)&0xf;
+            code0=c+'0';
+            if (c > 9) code0=c - 10 + 'A';
+            encodedString+='%';
+            encodedString+=code0;
+            encodedString+=code1;
+        }
+    }
+    return encodedString;
 }

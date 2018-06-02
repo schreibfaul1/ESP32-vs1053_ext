@@ -13,6 +13,7 @@ extern __attribute__((weak)) void vs1053_showstreamtitle(const char*);
 extern __attribute__((weak)) void vs1053_showstation(const char*);
 extern __attribute__((weak)) void vs1053_showstreaminfo(const char*);
 extern __attribute__((weak)) void vs1053_eof_mp3(const char*);
+extern __attribute__((weak)) void vs1053_eof_speech(const char*);
 extern __attribute__((weak)) void vs1053_bitrate(const char*);
 extern __attribute__((weak)) void vs1053_commercial(const char*);
 extern __attribute__((weak)) void vs1053_icyurl(const char*);
@@ -138,6 +139,9 @@ class VS1053
                                                          // time a new song starts.
     void     stopSong() ;                                // Finish playing a song. Call this after
                                                          // the last playChunk call.
+    String   urlencode(String str);
+    long long int XL (long long int a, const char* b);
+    char*    lltoa(long long val, int base);
     inline bool data_request() const
     {
       return ( digitalRead ( dreq_pin ) == HIGH ) ;
@@ -164,6 +168,7 @@ class VS1053
     uint16_t ringused();
     bool     connecttohost(String host);
     bool	 connecttoSD(String sdfile);
+    bool     connecttospeech(String speech, String lang);
     inline uint8_t getDatamode(){
        	return m_datamode;
        }
