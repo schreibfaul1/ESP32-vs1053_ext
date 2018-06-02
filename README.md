@@ -4,7 +4,7 @@ I have found the Originalcode by EdZelf ESP32 Webradio.
 The code is extended with a WiFi-client. This library can play many radiostations up to 320kb/s.
 Chunked data transfer is supported. Playlists can be m3u, pls or asx, dataformat can be mp3, wma, aac, or ogg,
 asx playlists must contains only audio but no additional videodata.
-Also it can play mp3-files from SD Card.<br>
+Also it can play mp3-files from SD Card and from text using Google Translate Service (thanks to horihiro, included esp8266-google-tts library)<br>
 The class provides optional events:<br>
 vs1053_showstreaminfo &nbsp;&nbsp;&nbsp; shows th connexted URL<br>
 vs1053_showstreamtitle &nbsp;&nbsp;&nbsp; the played title<br>
@@ -51,6 +51,7 @@ void setup() {
 	//mp3.connecttohost("tophits.radiomonster.fm/320.mp3");  //bitrate 320k
 	//mp3.connecttohost("hellwegradiowest.radiovonhier.de/high/stream.mp3"); // Transfer Encoding: chunked
 	//mp3.connecttoSD("/mp3files/320k_test.mp3"); // SD card
+	//mp3.connecttospeech("Wenn die Hunde schlafen, kann der Wolf gut Schafe stehlen.", "de");
 }
 
 // The loop function is called in an endless loop
@@ -59,7 +60,7 @@ void loop()
     mp3.loop();
 }
 
-// optional:
+// next code is optional:
 void vs1053_info(const char *info) {                // called from vs1053
     Serial.print("DEBUG:       ");
     Serial.print(info);                             // debug infos
@@ -91,6 +92,9 @@ void vs1053_commercial(const char *info){           // called from vs1053
 void vs1053_icyurl(const char *info){               // called from vs1053
     Serial.print("Homepage: ");  
     Serial.println(info);                           // info contains the URL
+}
+void vs1053_eof_speech(const char *info){           // called from vs1053
+    Serial.println(info);                           
 }
 ```
 Breadboard
