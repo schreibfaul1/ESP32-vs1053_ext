@@ -209,7 +209,8 @@ void VS1053::stopSong()
         }
         delay(10);
     }
-    printDetails("Song stopped incorrectly! \n");
+    if(vs1053_info) vs1053_info("Song stopped incorrectly! \n");
+    printDetails();
 }
 //---------------------------------------------------------------------------------------
 void VS1053::softReset()
@@ -219,23 +220,52 @@ void VS1053::softReset()
     await_data_request();
 }
 //---------------------------------------------------------------------------------------
-void VS1053::printDetails(const char *header){
+void VS1053::printDetails(){
     uint16_t regbuf[16];
     uint8_t i;
+    String reg, tmp;
+//    String bit_rep[16] = {
+//        [ 0] = "0000", [ 1] = "0001", [ 2] = "0010", [ 3] = "0011",
+//        [ 4] = "0100", [ 5] = "0101", [ 6] = "0110", [ 7] = "0111",
+//        [ 8] = "1000", [ 9] = "1001", [10] = "1010", [11] = "1011",
+//        [12] = "1100", [13] = "1101", [14] = "1110", [15] = "1111",
+//    };
+    String regName[16] = {
+        [ 0] = "MODE       ", [ 1] = "STATUS     ", [ 2] = "BASS       ", [ 3] = "CLOCKF     ",
+        [ 4] = "DECODE_TIME", [ 5] = "AUDATA     ", [ 6] = "WRAM       ", [ 7] = "WRAMADDR   ",
+        [ 8] = "HDAT0      ", [ 9] = "HDAT1      ", [10] = "AIADDR     ", [11] = "VOL        ",
+        [12] = "AICTRL0    ", [13] = "AICTRL1    ", [14] = "AICTRL2    ", [15] = "AICTRL3    ",
+    };
 
-    if(vs1053_info) vs1053_info(header);
-    if(vs1053_info) vs1053_info("REG   Contents \n");
-    if(vs1053_info) vs1053_info("---   ----- \n");
-    for(i=0; i <= SCI_AICTRL3; i++)
-            {
+    if(vs1053_info) vs1053_info("REG         Contents   bin   hex \n");
+    if(vs1053_info) vs1053_info("----------- ---------------- ----\n");
+    for(i=0; i <= SCI_AICTRL3; i++){
         regbuf[i]=read_register(i);
     }
-    for(i=0; i <= SCI_AICTRL3; i++)
-            {
-        delay(5);
-        sprintf(sbuf, "%3X - %5X \n", i, regbuf[i]);
-        if(vs1053_info) vs1053_info(sbuf);
+    for(i=0; i <= SCI_AICTRL3; i++){
+        reg=regName[i]+ " ";
+        tmp=String(regbuf[i],2); while(tmp.length()<16) tmp="0"+tmp; // convert regbuf to binary string
+        reg=reg+tmp +" ";
+        tmp=String(regbuf[i],16); tmp.toUpperCase(); while(tmp.length()<4) tmp="0"+tmp; // conv to hex
+        reg=reg+tmp +"\n";
+        if(vs1053_info) vs1053_info(reg.c_str());
     }
+}
+//---------------------------------------------------------------------------------------
+bool VS1053::printVersion(){
+    boolean flag=false;
+    uint16_t reg1=0, reg2=0;
+    reg1=wram_read(0x1E00);
+    reg2=wram_read(0x1E01);
+    if((reg1==0xFFFF)&&(reg2==0xFFFF)){reg1=0; reg2=0;} // all high?, seems not connected
+    else flag=true;
+    sprintf(sbuf, "chipID = %d%d\n", reg1, reg2);
+    if(vs1053_info) vs1053_info(sbuf);
+    reg1=wram_read(0x1E02) & 0xFF;
+    if(reg1==0xFF) {reg1=0; flag=false;} // version too high
+    sprintf(sbuf, "version = %d\n", reg1);
+    if(vs1053_info) vs1053_info(sbuf);
+    return flag;
 }
 //---------------------------------------------------------------------------------------
 bool VS1053::chkhdrline(const char* str){
@@ -366,6 +396,7 @@ void VS1053::handlebyte(uint8_t b){
                     if(lcml.indexOf("ogg") >= 0){               // Is ct ogg?
                         m_ctseen=true;                          // Yes, remember seeing this
                         ct=m_metaline.substring(13);
+                        ct.trim();
                         sprintf(sbuf, "%s seen.\n", ct.c_str());
                         if(vs1053_info) vs1053_info(sbuf);
                         m_metaint=0;                            // ogg has no metadata
@@ -417,16 +448,21 @@ void VS1053::handlebyte(uint8_t b){
             }
             m_metaline="";                                      // Reset this line
             if((m_LFcount == 2) && m_ctseen){                   // Some data seen and a double LF?
-                sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
-                if(vs1053_info) vs1053_info(sbuf);
                 if(m_icyname==""){if(vs1053_showstation) vs1053_showstation("");} // no icyname available
                 if(m_bitrate==0){if(vs1053_bitrate) vs1053_bitrate("");} // no bitrate received
-                m_datamode=VS1053_DATA;                         // Expecting data now
                 if(m_f_ogg==true){
                     m_datamode=VS1053_OGG;                      // Overwrite m_datamode
+                    sprintf(sbuf, "Switch to OGG, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
+                    if(vs1053_info) vs1053_info(sbuf);
                     m_f_ogg=false;
                 }
+                else{
+                    m_datamode=VS1053_DATA;                         // Expecting data now
+                    sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
+                    if(vs1053_info) vs1053_info(sbuf);
+                }
                 startSong();                                    // Start a new song
+                delay(1000);
             }
         }
         else
@@ -730,7 +766,7 @@ void VS1053::loop(){
 
         if(m_datamode==VS1053_OGG){
             if(rcount>1024) btp=1024; else btp=rcount;  // reduce chunk thereby the ringbuffer can be proper fillied
-            if(btp){
+            if(btp){  //bytes to play
                 rcount-=btp;
                 if((m_rbrindex + btp) >= m_ringbfsiz){
                     part=m_ringbfsiz - m_rbrindex;
@@ -746,12 +782,10 @@ void VS1053::loop(){
                 }
             } return;
         }
-
-
         if(m_datamode==VS1053_DATA){
             if(rcount>1024)btp=1024;  else btp=rcount;  // reduce chunk thereby the ringbuffer can be proper fillied
             if(count>btp){bcs=btp; count-=bcs;} else{bcs=count; count=0;}
-            if(bcs){
+            if(bcs){ // bytes can send
               rcount-=bcs;
                 // First see if we must split the transfer.  We cannot write past the ringbuffer end.
                 if((m_rbrindex + bcs) >= m_ringbfsiz){
@@ -966,7 +1000,7 @@ bool VS1053::connecttospeech(String speech, String lang){
     String host="translate.google.com";
     String path="/translate_tts";
     m_f_localfile=false;
-    m_f_webstream=true;
+    m_f_webstream=false;
     m_ssl=true;
 
     stopSong();
