@@ -301,7 +301,7 @@ void VS1053::showstreamtitle(const char *ml, bool full){
     if(pos1!=-1){                                       // StreamTitle found
         pos1=pos1+12;
         st=mline.substring(pos1);                       // remove "StreamTitle="
-        log_i("st_orig %s", st.c_str());
+ //     log_i("st_orig %s", st.c_str());
         if(st.startsWith("'{")){
             // special codig like '{"t":"\u041f\u0438\u043a\u043d\u0438\u043a - \u0418...."m":"mdb","lAU":0,"lAuU":18}
             pos2= st.indexOf('"', 8);                   // end of '{"t":".......", seek for double quote at pos 8
