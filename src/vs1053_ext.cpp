@@ -293,30 +293,64 @@ void VS1053::showstreamtitle(const char *ml, bool full){
     // StreamTitle='Oliver Frank - Mega Hitmix';StreamUrl='www.radio-welle-woerthersee.at';
     // or adw_ad='true';durationMilliseconds='10135';adId='34254';insertionType='preroll';
 
-    int8_t pos1=0, pos2=0, pos3=0, pos4=0;
+    int16_t pos1=0, pos2=0, pos3=0, pos4=0;
     String mline=ml, st="", su="", ad="", artist="", title="", icyurl="";
     static String st_remember="";
     //log_i("%s",mline.c_str());
     pos1=mline.indexOf("StreamTitle=");
-    if(pos1!=-1){                               // StreamTitle found
+    if(pos1!=-1){                                       // StreamTitle found
         pos1=pos1+12;
-        st=mline.substring(pos1);               // remove "StreamTitle="
-        if(st.indexOf('&')!=-1){                // maybe html coded
-            st.replace("&Auml;", "Ä" ); st.replace("&auml;", "ä"); //HTML -> ASCII
-            st.replace("&Ouml;", "Ö" ); st.replace("&ouml;", "o");
-            st.replace("&Uuml;", "Ü" ); st.replace("&uuml;", "ü");
-            st.replace("&szlig;","ß" ); st.replace("&amp;",  "&");
-            st.replace("&quot;", "\""); st.replace("&lt;",   "<");
-            st.replace("&gt;",   ">" ); st.replace("&apos;", "'");
+        st=mline.substring(pos1);                       // remove "StreamTitle="
+        log_i("st_orig %s", st.c_str());
+        if(st.startsWith("'{")){
+            // special codig like '{"t":"\u041f\u0438\u043a\u043d\u0438\u043a - \u0418...."m":"mdb","lAU":0,"lAuU":18}
+            pos2= st.indexOf('"', 8);                   // end of '{"t":".......", seek for double quote at pos 8
+            st=st.substring(0, pos2);
+            pos2= st.lastIndexOf('"');
+            st=st.substring(pos2+1);                    // remove '{"t":"
+            pos2=0;
+            String uni="";
+            String st1="";
+            uint16_t u=0;
+            uint8_t v=0, w=0;
+            for(int i=0; i<st.length(); i++){
+                if(pos2>1) pos2++;
+                if((st[i]=='\\')&&(pos2==0)) pos2=1;    // backslash found
+                if((st[i]=='u' )&&(pos2==1)) pos2=2;    // "\u" found
+                if(pos2>2) uni=uni+st[i];               // next 4 values are unicode
+                if(pos2==0) st1+=st[i];                 // normal character
+                if(pos2>5){
+                    pos2=0;
+                    u=strtol(uni.c_str(), 0, 16);       // convert hex to int
+                    v=u/64 + 0xC0; st1+=char(v);        // compute UTF-8
+                    w=u%64 + 0x80; st1+=char(w);
+                     //log_i("uni %i  %i", v, w );
+                    uni="";
+                }
+            }
+            log_i("st1 %s", st1.c_str());
+            st=st1;
         }
-        pos2= st.indexOf(';',1);                // end of StreamTitle, first occurence of ';'
-        if(pos2!=-1) st=st.substring(0,pos2);   // extract StreamTitle
-        if(st.startsWith("'")) st=st.substring(1,st.length()-1); // if exists remove ' at the begin and end
-        pos3=st.lastIndexOf(" - ");             // separator artist - title
-        if(pos3!=-1){                           // found separator? yes
-            artist=st.substring(0,pos3);        // artist not used yet
-            title=st.substring(pos3+3);         // title not used yet
+        else{
+            // normal coding
+            if(st.indexOf('&')!=-1){                // maybe html coded
+                st.replace("&Auml;", "Ä" ); st.replace("&auml;", "ä"); //HTML -> ASCII
+                st.replace("&Ouml;", "Ö" ); st.replace("&ouml;", "o");
+                st.replace("&Uuml;", "Ü" ); st.replace("&uuml;", "ü");
+                st.replace("&szlig;","ß" ); st.replace("&amp;",  "&");
+                st.replace("&quot;", "\""); st.replace("&lt;",   "<");
+                st.replace("&gt;",   ">" ); st.replace("&apos;", "'");
+            }
+            pos2= st.indexOf(';',1);                // end of StreamTitle, first occurence of ';'
+            if(pos2!=-1) st=st.substring(0,pos2);   // extract StreamTitle
+            if(st.startsWith("'")) st=st.substring(1,st.length()-1); // if exists remove ' at the begin and end
+            pos3=st.lastIndexOf(" - ");             // separator artist - title
+            if(pos3!=-1){                           // found separator? yes
+                artist=st.substring(0,pos3);        // artist not used yet
+                title=st.substring(pos3+3);         // title not used yet
+            }
         }
+
         if(st_remember!=st){ // show only changes
             if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
         }
