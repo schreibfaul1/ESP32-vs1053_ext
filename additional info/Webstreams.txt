@@ -88,6 +88,16 @@ Hireadio Centraal                         www.hitradiocentraal.nl/stream/HRC.asx
 //______________________________________________________________________
 mainstreams, most 128k
 
+
+0N 70s	                                  s3.radionetz.de:8000/0n-70s.mp3	
+0N 80s	                                  0n-80s.radionetz.de:8000/0n-80s.mp3	
+0N 90s	                                  0n-90s.radionetz.de:8000/0n-90s.mp3	
+0N Charts	                                0n-charts.radionetz.de:8000/0n-charts.mp3	
+0N Dance	                                0n-dance.radionetz.de:8000/0n-dance.mp3	
+0N Schlager	                              0n-schlager.radionetz.de:8000/0n-schlager.mp3	
+0N Disco	                                0n-disco.radionetz.de:8000/0n-disco.mp3	
+0N Electro	                              0n-electro.radionetz.de:8000/0n-electro.mp3	
+0N Gay	                                  0n-gay.radionetz.de:8000/0n-gay.mp3	
 030-berlinfm                              vtuner.stream.laut.fm/030-berlinfm
 101FM.de Internetradio                    www.101fm.de/radio_links/listen.pls
 104.6 RTL                                 rtlberlin.hoerradar.de/rtlberlin-live-mp3-128
