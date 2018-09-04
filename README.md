@@ -51,6 +51,7 @@ void setup() {
 	//mp3.connecttohost("listen.ai-radio.org:8000/320.ogg?cc=DE&now=1511557873.987&");  // ogg
 	//mp3.connecttohost("tophits.radiomonster.fm/320.mp3");  //bitrate 320k
 	//mp3.connecttohost("hellwegradiowest.radiovonhier.de/high/stream.mp3"); // Transfer Encoding: chunked
+	//mp3.connecttohost("https://icecast.omroepvenray.nl/lov.mp3"); // ssl
 	//mp3.connecttoSD("/mp3files/320k_test.mp3"); // SD card
 	//mp3.connecttospeech("Wenn die Hunde schlafen, kann der Wolf gut Schafe stehlen.", "de");
 }
@@ -97,6 +98,11 @@ void vs1053_icyurl(const char *info){               // called from vs1053
 void vs1053_eof_speech(const char *info){           // called from vs1053
     Serial.println(info);                           
 }
+void vs1053_lasthost(const char *info){             // really connected URL
+    Serial.print("lastURL: ");
+    Serial.println(info);
+}
+
 ```
 Breadboard
 ![Breadboard](https://github.com/schreibfaul1/ESP32-vs1053_ext/blob/master/additional%20info/Breadboard.jpg)
