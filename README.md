@@ -14,6 +14,7 @@ vs1053_bitrate &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &n
 vs1053_eof_mp3 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; mp3 player reaches the end of file<br>
 vs1053_commercial  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; is there a commercial at the begin, show the duration in seconds<br>
 vs1053_icyurl &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; if the station have a homepage, show the URL
+vs1053_lasthost &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; contains the really connected URL (originally may be changed by redirection)
 
 ``` c++
 #include "Arduino.h"
