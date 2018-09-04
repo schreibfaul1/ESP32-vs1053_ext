@@ -295,13 +295,12 @@ void VS1053::showstreamtitle(const char *ml, bool full){
 
     int16_t pos1=0, pos2=0, pos3=0, pos4=0;
     String mline=ml, st="", su="", ad="", artist="", title="", icyurl="";
-    static String st_remember="";
     //log_i("%s",mline.c_str());
     pos1=mline.indexOf("StreamTitle=");
     if(pos1!=-1){                                       // StreamTitle found
         pos1=pos1+12;
         st=mline.substring(pos1);                       // remove "StreamTitle="
- //     log_i("st_orig %s", st.c_str());
+//      log_i("st_orig %s", st.c_str());
         if(st.startsWith("'{")){
             // special codig like '{"t":"\u041f\u0438\u043a\u043d\u0438\u043a - \u0418...."m":"mdb","lAU":0,"lAuU":18}
             pos2= st.indexOf('"', 8);                   // end of '{"t":".......", seek for double quote at pos 8
@@ -351,11 +350,11 @@ void VS1053::showstreamtitle(const char *ml, bool full){
             }
         }
 
-        if(st_remember!=st){ // show only changes
+        if(m_st_remember!=st){ // show only changes
             if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
         }
 
-        st_remember=st;
+        m_st_remember=st;
         st="StreamTitle=" + st + '\n';
         if(vs1053_info) vs1053_info(st.c_str());
     }
@@ -488,12 +487,20 @@ void VS1053::handlebyte(uint8_t b){
                     m_datamode=VS1053_OGG;                      // Overwrite m_datamode
                     sprintf(sbuf, "Switch to OGG, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
                     if(vs1053_info) vs1053_info(sbuf);
+                    String lasthost=m_lastHost;
+                    uint idx=lasthost.indexOf('?');
+                    if(idx>0) lasthost=lasthost.substring(0, idx);
+                    if(vs1053_lasthost) vs1053_lasthost(lasthost.c_str());
                     m_f_ogg=false;
                 }
                 else{
                     m_datamode=VS1053_DATA;                         // Expecting data now
                     sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
                     if(vs1053_info) vs1053_info(sbuf);
+                    String lasthost=m_lastHost;
+                    uint idx=lasthost.indexOf('?');
+                    if(idx>0) lasthost=lasthost.substring(0, idx);
+                    if(vs1053_lasthost) vs1053_lasthost(lasthost.c_str());
                 }
                 startSong();                                    // Start a new song
                 delay(1000);
@@ -514,7 +521,7 @@ void VS1053::handlebyte(uint8_t b){
             m_metacount=b * 16 + 1;                             // New count for metadata including length byte
             if(m_metacount > 1){
                 sprintf(sbuf, "Metadata block %d bytes\n",      // Most of the time there are zero bytes of metadata
-                        m_metacount - 1);
+                        m_metacount-1);
                 if(vs1053_info) vs1053_info(sbuf);
            }
             m_metaline="";                                      // Set to empty
@@ -751,7 +758,6 @@ void VS1053::loop(){
             }
             if(m_rbwindex==m_ringbfsiz) m_rbwindex=0;
         }
-
         if(m_datamode == VS1053_PLAYLISTDATA){
             if(m_t0+49<millis()) {
                 //log_i("terminate metaline after 50ms");     // if mo data comes from host
@@ -921,6 +927,7 @@ bool VS1053::connecttohost(String host){
     m_totalcount=0;                                         // Reset totalcount
     m_metaline="";                                          // No metadata yet
     m_icyname="";                                           // No StationName yet
+    m_st_remember="";                                       // Delete the last streamtitle
     m_bitrate=0;                                            // No bitrate yet
     m_firstchunk=true;                                      // First chunk expected
     m_chunked=false;                                        // Assume not chunked

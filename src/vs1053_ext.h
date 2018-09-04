@@ -17,6 +17,7 @@ extern __attribute__((weak)) void vs1053_eof_speech(const char*);
 extern __attribute__((weak)) void vs1053_bitrate(const char*);
 extern __attribute__((weak)) void vs1053_commercial(const char*);
 extern __attribute__((weak)) void vs1053_icyurl(const char*);
+extern __attribute__((weak)) void vs1053_lasthost(const char*);
 
 #define VS1053_HEADER          2    //const for datamode
 #define VS1053_DATA            4
@@ -84,6 +85,7 @@ class VS1053
     String          m_mp3title;                     // Name of the mp3 file
     String          m_lastHost="";                  // Store the last URL to a webstream
     String          m_icyurl="";                    // Store ie icy-url if received
+    String          m_st_remember="";               // Save the last streamtitle
     bool            m_chunked = false ;             // Station provides chunked transfer
     bool            m_ctseen=false;                 // First line of header seen or not
     bool            m_firstchunk=true;              // First chunk as input
@@ -173,7 +175,7 @@ class VS1053
     inline void setDatamode(uint8_t dm){
        	m_datamode=dm;
        }
-    inline uint32_t streamavail() {return client.available();}
+    inline uint32_t streamavail() {if(m_ssl==false) return client.available(); else return clientsecure.available();}
 } ;
 
 #endif
