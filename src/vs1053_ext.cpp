@@ -12,16 +12,16 @@ VS1053::~VS1053(){
     // destructor
 }
 //---------------------------------------------------------------------------------------
+void VS1053::control_mode_off()
+{
+    CS_HIGH();                                  // End control mode
+    SPI.endTransaction();                       // Allow other SPI users
+}
 void VS1053::control_mode_on()
 {
     SPI.beginTransaction(VS1053_SPI);           // Prevent other SPI users
     DCS_HIGH();                                 // Bring slave in control mode
     CS_LOW();
-}
-void VS1053::control_mode_off()
-{
-    CS_HIGH();                                  // End control mode
-    SPI.endTransaction();                       // Allow other SPI users
 }
 void VS1053::data_mode_on()
 {
@@ -253,12 +253,13 @@ void VS1053::printDetails(){
 }
 //---------------------------------------------------------------------------------------
 bool VS1053::printVersion(){
-    boolean flag=false;
+    boolean flag=true;
     uint16_t reg1=0, reg2=0;
     reg1=wram_read(0x1E00);
     reg2=wram_read(0x1E01);
-    if((reg1==0xFFFF)&&(reg2==0xFFFF)){reg1=0; reg2=0;} // all high?, seems not connected
-    else flag=true;
+    if((reg1==0xFFFF)&&(reg2==0xFFFF)) flag=false; // all high?, seems not connected
+    if((reg1==0x0000)&&(reg2==0x0000)) flag=false; // all low?,  not proper connected (no SCK?)
+    if(flag==false){reg1=0; reg2=0;}
     sprintf(sbuf, "chipID = %d%d\n", reg1, reg2);
     if(vs1053_info) vs1053_info(sbuf);
     reg1=wram_read(0x1E02) & 0xFF;
@@ -452,6 +453,7 @@ void VS1053::handlebyte(uint8_t b){
                 }
                 else if(lcml.startsWith("icy-metaint:")){
                     m_metaint=m_metaline.substring(12).toInt(); // Found metaint tag, read the value
+                    log_i("m_metaint=%i",m_metaint);
                     //if(m_metaint==0) m_metaint=16000;           // if no set to default
                 }
                 else if(lcml.startsWith("icy-name:")){
@@ -532,6 +534,7 @@ void VS1053::handlebyte(uint8_t b){
         }
         if(--m_metacount == 0){
             if(m_metaline.length()){                            // Any info present?
+
                 // metaline contains artist and song name.  For example:
                 // "StreamTitle='Don McLean - American Pie';StreamUrl='';"
                 // Sometimes it is just other info like:
@@ -722,8 +725,8 @@ void VS1053::loop(){
     int16_t  res=0;                                         // number of bytes getting from client
     uint32_t av=0;                                          // available in stream (uin16_t is to small by playing from SD)
     static uint16_t rcount=0;                               // max bytes handover to the player
-    static uint16_t chunksize=0;                            // Chunkcount read from stream
-    static uint16_t count=0;                                // Bytecounter between metadata
+    static uint32_t chunksize=0;                            // Chunkcount read from stream
+    static uint32_t count=0;                                // Bytecounter between metadata
     static uint32_t i=0;                                    // Count loops if ringbuffer is empty
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

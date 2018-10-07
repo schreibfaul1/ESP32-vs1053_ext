@@ -90,8 +90,8 @@ class VS1053
     bool            m_ctseen=false;                 // First line of header seen or not
     bool            m_firstchunk=true;              // First chunk as input
     int             m_LFcount;                      // Detection of end of header
-    int             m_chunkcount = 0 ;              // Counter for chunked transfer
-    int             m_metaint = 0;                  // Number of databytes between metadata
+    uint32_t        m_chunkcount = 0 ;              // Counter for chunked transfer
+    uint32_t        m_metaint = 0;                  // Number of databytes between metadata
     int             m_bitrate = 0;                  // Bitrate in kb/sec
     int16_t         m_btp=0;                        // Bytes to play
     uint32_t        m_totalcount = 0;               // Counter mp3 data
