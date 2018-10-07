@@ -430,7 +430,4 @@ known streams not working  with VS1053_ext
 //______________________________________________________________________
 www.fro.at:8008/fro-128.ogg           no sound (Radio FROStream 105.5 MHz)
 www.fro.at:8008/fro-64.ogg            no sound (in Winamp okay)
-stream.tbfunk.de/okn.mp3              heavy metadata
-server3755.streamplus.de              request failed rattlesnake-radio.de
-server2986.streamplus.de/;stream.mp3  chunked datatransfer, wrong metadata
-http://server28637.streamplus.de/     wrong metadata (Burning Station)
+
