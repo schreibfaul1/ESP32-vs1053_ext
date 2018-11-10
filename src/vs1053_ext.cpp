@@ -143,7 +143,7 @@ void VS1053::begin(){
     delay(10);
     await_data_request();
     m_endFillByte=wram_read(0x1E06) & 0xFF;
-//    sprintf(sbuf, "endFillByte is %X \n", endFillByte);
+//    sprintf(sbuf, "endFillByte is %X", endFillByte);
 //    if(vs1053_info) vs1053_info(sbuf);
 //    printDetails("After last clocksetting \n");
     delay(100);
@@ -203,13 +203,13 @@ void VS1053::stopSong()
         if((modereg & _BV(SM_CANCEL)) == 0)
                 {
             sdi_send_fillers(2052);
-            sprintf(sbuf, "Song stopped correctly after %d msec \n", i * 10);
+            sprintf(sbuf, "Song stopped correctly after %d msec", i * 10);
             if(vs1053_info) vs1053_info(sbuf);
             return;
         }
         delay(10);
     }
-    if(vs1053_info) vs1053_info("Song stopped incorrectly! \n");
+    if(vs1053_info) vs1053_info("Song stopped incorrectly!");
     printDetails();
 }
 //---------------------------------------------------------------------------------------
@@ -237,8 +237,8 @@ void VS1053::printDetails(){
         [12] = "AICTRL0    ", [13] = "AICTRL1    ", [14] = "AICTRL2    ", [15] = "AICTRL3    ",
     };
 
-    if(vs1053_info) vs1053_info("REG         Contents   bin   hex \n");
-    if(vs1053_info) vs1053_info("----------- ---------------- ----\n");
+    if(vs1053_info) vs1053_info("REG         Contents   bin   hex");
+    if(vs1053_info) vs1053_info("----------- ---------------- ---");
     for(i=0; i <= SCI_AICTRL3; i++){
         regbuf[i]=read_register(i);
     }
@@ -247,7 +247,7 @@ void VS1053::printDetails(){
         tmp=String(regbuf[i],2); while(tmp.length()<16) tmp="0"+tmp; // convert regbuf to binary string
         reg=reg+tmp +" ";
         tmp=String(regbuf[i],16); tmp.toUpperCase(); while(tmp.length()<4) tmp="0"+tmp; // conv to hex
-        reg=reg+tmp +"\n";
+        reg=reg+tmp;
         if(vs1053_info) vs1053_info(reg.c_str());
     }
 }
@@ -260,11 +260,11 @@ bool VS1053::printVersion(){
     if((reg1==0xFFFF)&&(reg2==0xFFFF)) flag=false; // all high?, seems not connected
     if((reg1==0x0000)&&(reg2==0x0000)) flag=false; // all low?,  not proper connected (no SCK?)
     if(flag==false){reg1=0; reg2=0;}
-    sprintf(sbuf, "chipID = %d%d\n", reg1, reg2);
+    sprintf(sbuf, "chipID = %d%d", reg1, reg2);
     if(vs1053_info) vs1053_info(sbuf);
     reg1=wram_read(0x1E02) & 0xFF;
     if(reg1==0xFF) {reg1=0; flag=false;} // version too high
-    sprintf(sbuf, "version = %d\n", reg1);
+    sprintf(sbuf, "version = %d", reg1);
     if(vs1053_info) vs1053_info(sbuf);
     return flag;
 }
@@ -356,7 +356,7 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         }
 
         m_st_remember=st;
-        st="StreamTitle=" + st + '\n';
+        st="StreamTitle=" + st;
         if(vs1053_info) vs1053_info(st.c_str());
     }
     pos4=mline.indexOf("StreamUrl=");
@@ -366,13 +366,12 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         pos2= su.indexOf(';',1);                // end of StreamUrl, first occurence of ';'
         if(pos2!=-1) su=su.substring(0,pos2);   // extract StreamUrl
         if(su.startsWith("'")) su=su.substring(1,su.length()-1); // if exists remove ' at the begin and end
-        su="StreamUrl=" + su + '\n';
+        su="StreamUrl=" + su;
         if(vs1053_info) vs1053_info(su.c_str());
     }
     pos2=mline.indexOf("adw_ad=");              // advertising,
     if(pos2!=-1){
        ad=mline.substring(pos2);
-       ad=ad + '\n';
        if(vs1053_info) vs1053_info(ad.c_str());
        pos2=mline.indexOf("durationMilliseconds=");
        if(pos2!=-1){
@@ -390,7 +389,7 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         // Info probably from playlist
         st=mline;
         if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
-        st="Streamtitle: " + st + "\n";
+        st="Streamtitle: " + st;
         if(vs1053_info) vs1053_info(sbuf);
     }
 }
@@ -405,6 +404,8 @@ void VS1053::handlebyte(uint8_t b){
 
     if(m_datamode == VS1053_HEADER)                             // Handle next byte of MP3 header
     {
+
+
         if((b > 0x7F) ||                                        // Ignore unprintable characters
                 (b == '\r') ||                                  // Ignore CR
                 (b == '\0'))                                    // Ignore NULL
@@ -413,25 +414,24 @@ void VS1053::handlebyte(uint8_t b){
         }
         else if(b == '\n'){                                     // Linefeed ?
             m_LFcount++;                                        // Count linefeeds
+
             if(chkhdrline(m_metaline.c_str())){                 // Reasonable input?
                 lcml=m_metaline;                                // Use lower case for compare
                 lcml.toLowerCase();
                 lcml.trim();
-                sprintf(sbuf, "%s\n", m_metaline.c_str());
-                if(vs1053_info) vs1053_info(sbuf);              // Yes, Show it
                 if(lcml.indexOf("content-type:") >= 0){         // Line with "Content-Type: xxxx/yyy"
                     if(lcml.indexOf("audio") >= 0){             // Is ct audio?
                         m_ctseen=true;                          // Yes, remember seeing this
                         ct=m_metaline.substring(13);            // Set contentstype. Not used yet
                         ct.trim();
-                        sprintf(sbuf, "%s seen.\n", ct.c_str());
+                        sprintf(sbuf, "%s seen.", ct.c_str());
                         if(vs1053_info) vs1053_info(sbuf);
                     }
                     if(lcml.indexOf("ogg") >= 0){               // Is ct ogg?
                         m_ctseen=true;                          // Yes, remember seeing this
                         ct=m_metaline.substring(13);
                         ct.trim();
-                        sprintf(sbuf, "%s seen.\n", ct.c_str());
+                        sprintf(sbuf, "%s seen.", ct.c_str());
                         if(vs1053_info) vs1053_info(sbuf);
                         m_metaint=0;                            // ogg has no metadata
                         m_bitrate=0;
@@ -442,7 +442,7 @@ void VS1053::handlebyte(uint8_t b){
                 else if(lcml.startsWith("location:")){
                     host=m_metaline.substring(lcml.indexOf("http"),lcml.length());// use metaline instead lcml
                     if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
-                    sprintf(sbuf, "redirect to new host %s\n", host.c_str());
+                    sprintf(sbuf, "redirect to new host %s", host.c_str());
                     if(vs1053_info) vs1053_info(sbuf);
                     connecttohost(host);
                 }
@@ -453,8 +453,8 @@ void VS1053::handlebyte(uint8_t b){
                 }
                 else if(lcml.startsWith("icy-metaint:")){
                     m_metaint=m_metaline.substring(12).toInt(); // Found metaint tag, read the value
-                    log_i("m_metaint=%i",m_metaint);
-                    //if(m_metaint==0) m_metaint=16000;           // if no set to default
+                    //log_i("m_metaint=%i",m_metaint);
+                    if(m_metaint==0) m_metaint=16000;           // if no set to default
                 }
                 else if(lcml.startsWith("icy-name:")){
                     m_icyname=m_metaline.substring(9);          // Get station name
@@ -468,7 +468,7 @@ void VS1053::handlebyte(uint8_t b){
                     // Station provides chunked transfer
                     if(m_metaline.endsWith("chunked")){
                         m_chunked=true;
-                        if(vs1053_info) vs1053_info("chunked data transfer\n");
+                        if(vs1053_info) vs1053_info("chunked data transfer");
                         m_chunkcount=0;                         // Expect chunkcount in DATA
                     }
                 }
@@ -479,6 +479,8 @@ void VS1053::handlebyte(uint8_t b){
                 }
                 else{
                     // all other
+                    sprintf(sbuf, "%s", m_metaline.c_str());
+                    if(vs1053_info) vs1053_info(sbuf);
                 }
             }
             m_metaline="";                                      // Reset this line
@@ -487,7 +489,7 @@ void VS1053::handlebyte(uint8_t b){
                 if(m_bitrate==0){if(vs1053_bitrate) vs1053_bitrate("");} // no bitrate received
                 if(m_f_ogg==true){
                     m_datamode=VS1053_OGG;                      // Overwrite m_datamode
-                    sprintf(sbuf, "Switch to OGG, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
+                    sprintf(sbuf, "Switch to OGG, bitrate is %d, metaint is %d", m_bitrate, m_metaint); // Show bitrate and metaint
                     if(vs1053_info) vs1053_info(sbuf);
                     String lasthost=m_lastHost;
                     uint idx=lasthost.indexOf('?');
@@ -497,7 +499,7 @@ void VS1053::handlebyte(uint8_t b){
                 }
                 else{
                     m_datamode=VS1053_DATA;                         // Expecting data now
-                    sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d\n", m_bitrate, m_metaint); // Show bitrate and metaint
+                    sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d", m_bitrate, m_metaint); // Show bitrate and metaint
                     if(vs1053_info) vs1053_info(sbuf);
                     String lasthost=m_lastHost;
                     uint idx=lasthost.indexOf('?');
@@ -522,7 +524,7 @@ void VS1053::handlebyte(uint8_t b){
             m_firstmetabyte=false;                              // Not the first anymore
             m_metacount=b * 16 + 1;                             // New count for metadata including length byte
             if(m_metacount > 1){
-                sprintf(sbuf, "Metadata block %d bytes\n",      // Most of the time there are zero bytes of metadata
+                sprintf(sbuf, "Metadata block %d bytes",        // Most of the time there are zero bytes of metadata
                         m_metacount-1);
                 if(vs1053_info) vs1053_info(sbuf);
            }
@@ -544,7 +546,7 @@ void VS1053::handlebyte(uint8_t b){
             	if( !m_f_localfile) showstreamtitle(m_metaline.c_str(), true);         // Show artist and title if present in metadata
             }
             if(m_metaline.length() > 1500){                     // Unlikely metaline length?
-                if(vs1053_info) vs1053_info("Metadata block to long! Skipping all Metadata from now on.\n");
+                if(vs1053_info) vs1053_info("Metadata block to long! Skipping all Metadata from now on.");
                 m_metaint=16000;                                // Probably no metadata
                 m_metaline="";                                  // Do not waste memory on this
             }
@@ -561,7 +563,7 @@ void VS1053::handlebyte(uint8_t b){
         m_datamode=VS1053_PLAYLISTHEADER;                       // Handle playlist data
         playlistcnt=1;                                          // Reset for compare
         m_totalcount=0;                                         // Reset totalcount
-        if(vs1053_info) vs1053_info("Read from playlist\n");
+        if(vs1053_info) vs1053_info("Read from playlist");
     }
     if(m_datamode == VS1053_PLAYLISTHEADER){                    // Read header
         if((b > 0x7F) ||                                        // Ignore unprintable characters
@@ -573,22 +575,22 @@ void VS1053::handlebyte(uint8_t b){
         else if(b == '\n')                                      // Linefeed ?
                 {
             m_LFcount++;                                        // Count linefeeds
-            sprintf(sbuf, "Playlistheader: %s\n", m_metaline.c_str());  // Show playlistheader
+            sprintf(sbuf, "Playlistheader: %s", m_metaline.c_str());  // Show playlistheader
             if(vs1053_info) vs1053_info(sbuf);
             lcml=m_metaline;                                // Use lower case for compare
             lcml.toLowerCase();
             lcml.trim();
             if(lcml.startsWith("location:")){
-                 host=m_metaline.substring(lcml.indexOf("http"),lcml.length());// use metaline instead lcml
+                host=m_metaline.substring(lcml.indexOf("http"),lcml.length());// use metaline instead lcml
                 if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
-                sprintf(sbuf, "redirect to new host %s\n", host.c_str());
+                sprintf(sbuf, "redirect to new host %s", host.c_str());
                 if(vs1053_info) vs1053_info(sbuf);
                 connecttohost(host);
             }
             m_metaline="";                                      // Ready for next line
             if(m_LFcount == 2)
                     {
-                if(vs1053_info) vs1053_info("Switch to PLAYLISTDATA\n");
+                if(vs1053_info) vs1053_info("Switch to PLAYLISTDATA");
                 m_datamode=VS1053_PLAYLISTDATA;                 // Expecting data now
                 return;
             }
@@ -608,7 +610,7 @@ void VS1053::handlebyte(uint8_t b){
                 { /* Yes, ignore */ }
 
         else if(b == '\n'){                                     // Linefeed or end of string?
-            sprintf(sbuf, "Playlistdata: %s\n", m_metaline.c_str());  // Show playlistdata
+            sprintf(sbuf, "Playlistdata: %s", m_metaline.c_str());  // Show playlistdata
             if(vs1053_info) vs1053_info(sbuf);
             if(m_playlist.endsWith("m3u")){
                 if(m_metaline.length() < 5) {                   // Skip short lines
@@ -629,7 +631,7 @@ void VS1053::handlebyte(uint8_t b){
                     return;}                                    // Ignore commentlines
                 // Now we have an URL for a .mp3 file or stream.  Is it the rigth one?
                 //if(metaline.indexOf("&")>0)metaline=host.substring(0,metaline.indexOf("&"));
-                sprintf(sbuf, "Entry %d in playlist found: %s\n", playlistcnt, m_metaline.c_str());
+                sprintf(sbuf, "Entry %d in playlist found: %s", playlistcnt, m_metaline.c_str());
                 if(vs1053_info) vs1053_info(sbuf);
                 if(m_metaline.indexOf("&")){
                     m_metaline=m_metaline.substring(0, m_metaline.indexOf("&"));}
@@ -660,7 +662,7 @@ void VS1053::handlebyte(uint8_t b){
                 if(m_metaline.startsWith("Title1")){
                     m_plsStationName=m_metaline.substring(7);
                     if(vs1053_showstation) vs1053_showstation(m_plsStationName.c_str());
-                    sprintf(sbuf, "StationName: %s\n", m_plsStationName.c_str());
+                    sprintf(sbuf, "StationName: %s", m_plsStationName.c_str());
                     if(vs1053_info) vs1053_info(sbuf);
                     m_f_plsTitle=true;
                 }
@@ -691,7 +693,7 @@ void VS1053::handlebyte(uint8_t b){
                         m_plsStationName=m_metaline.substring(7);
                         if(m_plsURL.indexOf('<')>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf('<')); // remove rest
                         if(vs1053_showstation) vs1053_showstation(m_plsStationName.c_str());
-                        sprintf(sbuf, "StationName: %s\n", m_plsStationName.c_str());
+                        sprintf(sbuf, "StationName: %s", m_plsStationName.c_str());
                         if(vs1053_info) vs1053_info(sbuf);
                         m_f_plsTitle=true;
                     }
@@ -740,7 +742,7 @@ void VS1053::loop(){
          if(av == 0){                                       // No more data from SD Card
              mp3file.close();
              m_f_localfile=false;
-             sprintf(sbuf,"End of mp3file %s\n",m_mp3title.c_str());
+             sprintf(sbuf,"End of mp3file %s", m_mp3title.c_str());
              if(vs1053_info) vs1053_info(sbuf);
              if(vs1053_eof_mp3) vs1053_eof_mp3(m_mp3title.c_str());
          }
@@ -780,6 +782,7 @@ void VS1053::loop(){
                         chunksize=0;
                     }
                     else{
+
                         // We have received a hexadecimal character.  Decode it and add to the result.
                         b=toupper(b) - '0';                         // Be sure we have uppercase
                         if(b > 9) b = b - 7;                        // Translate A..F to 10..15
@@ -789,7 +792,6 @@ void VS1053::loop(){
                         m_rbrindex=0;                       // wrap at end
                     }
                     m_rcount--;
-
                 }
                 else break;
             }
@@ -874,7 +876,7 @@ void VS1053::loop(){
                 i++;
                 if(i>150000){    // wait several seconds
                     i=0;
-                    if(vs1053_info) vs1053_info("Stream lost -> try new connection\n");
+                    if(vs1053_info) vs1053_info("Stream lost -> try new connection");
                     connecttohost(m_lastHost);} // try a new connection
             }
             else i=0;
@@ -890,7 +892,7 @@ void VS1053::stop_mp3client(){
     write_register(SCI_VOL, 0);  // Mute while stopping
 //    while(client.connected())
 //    {
-//        if(vs1053_info) vs1053_info("Stopping client\n"); // Stop connection to host
+//        if(vs1053_info) vs1053_info("Stopping client"); // Stop connection to host
 //        client.flush();
 //        client.stop();
 //        delay(500);
@@ -916,7 +918,7 @@ bool VS1053::connecttohost(String host){
         m_f_stream_ready=false;
         m_lastHost=host;                                  // Remember the current host
     }
-    sprintf(sbuf, "Connect to new host: %s\n", host.c_str());
+    sprintf(sbuf, "Connect to new host: %s", host.c_str());
     if(vs1053_info) vs1053_info(sbuf);
 
     // initializationsequence
@@ -949,7 +951,7 @@ bool VS1053::connecttohost(String host){
         if(m_playlist_num == 0){                            // First entry to play?
             m_playlist_num=1;                               // Yes, set index
         }
-        sprintf(sbuf, "Playlist request, entry %d\n", m_playlist_num); // Most of the time there are zero bytes of metadata
+        sprintf(sbuf, "Playlist request, entry %d", m_playlist_num); // Most of the time there are zero bytes of metadata
         if(vs1053_info) vs1053_info(sbuf);
     }
 
@@ -966,7 +968,7 @@ bool VS1053::connecttohost(String host){
         port=host.substring(inx + 1).toInt();               // Get portnumber as integer
         hostwoext=host.substring(0, inx);                   // Host without portnumber
     }
-    sprintf(sbuf, "Connect to %s on port %d, extension %s\n",
+    sprintf(sbuf, "Connect to %s on port %d, extension %s",
             hostwoext.c_str(), port, extension.c_str());
     if(vs1053_info) vs1053_info(sbuf);
     if(vs1053_showstreaminfo) vs1053_showstreaminfo(sbuf);
@@ -980,20 +982,20 @@ bool VS1053::connecttohost(String host){
 
     if(m_ssl==false){
         if(client.connect(hostwoext.c_str(), port)){
-            if(vs1053_info) vs1053_info("Connected to server\n");
+            if(vs1053_info) vs1053_info("Connected to server");
             client.print(resp);
             return true;
         }
     }
     if(m_ssl==true){
         if(clientsecure.connect(hostwoext.c_str(), 443)){
-            if(vs1053_info) vs1053_info("SSL/TLS Connected to server\n");
+            if(vs1053_info) vs1053_info("SSL/TLS Connected to server");
             clientsecure.print(resp);
             return true;
         }
     }
 
-    sprintf(sbuf, "Request %s failed!\n", host.c_str());
+    sprintf(sbuf, "Request %s failed!", host.c_str());
     if(vs1053_info) vs1053_info(sbuf);
     if(vs1053_showstation) vs1053_showstation("");
     if(vs1053_showstreamtitle) vs1053_showstreamtitle("");
@@ -1029,12 +1031,12 @@ bool VS1053::connecttoSD(String sdfile){
     path[i]=0;
     m_mp3title=sdfile.substring(sdfile.lastIndexOf('/') + 1, sdfile.length());
     showstreamtitle(m_mp3title.c_str(), true);
-    sprintf(sbuf, "Reading file: %s\n", path);
+    sprintf(sbuf, "Reading file: %s", path);
     if(vs1053_info) vs1053_info(sbuf);
     fs::FS &fs=SD;
     mp3file=fs.open(path);
     if( !mp3file){
-        if(vs1053_info) vs1053_info("Failed to open file for reading\n");
+        if(vs1053_info) vs1053_info("Failed to open file for reading");
         return false;
     }
     return true;
@@ -1066,7 +1068,6 @@ bool VS1053::connecttospeech(String speech, String lang){
     while (clientsecure.connected()) {  // read the header
         String line = clientsecure.readStringUntil('\n');
         line+="\n";
-//      if(vs1053_info) vs1053_info(line.c_str());
         if (line == "\r\n") break;
     }
 
@@ -1084,42 +1085,41 @@ bool VS1053::connecttospeech(String speech, String lang){
         if (ch != 'K') continue;
         tkkFunc += String(ch);
     } while(tkkFunc.length() < 3);
-    tkkFunc +=  clientsecure.readStringUntil('}');
-    int head = tkkFunc.indexOf("3d") + 2;
-    int tail = tkkFunc.indexOf(";", head);
-    char* buf;
-    unsigned long a = strtoul(tkkFunc.substring(head, tail).c_str(), &buf, 10);
-    head = tkkFunc.indexOf("3d", tail) + 2;
-    tail = tkkFunc.indexOf(";", head);
-    unsigned long b = strtoul(tkkFunc.substring(head, tail).c_str(), &buf, 10);
-    head = tkkFunc.indexOf("return ", tail) + 7;
-    tail = tkkFunc.indexOf("+", head);
-    String key1 = tkkFunc.substring(head, tail);
-    String key2  = String(a+b);
-    long long int a1, b1;
-    a1 = b1 = strtoll(key1.c_str(), NULL, 10);
+    tkkFunc +=  clientsecure.readStringUntil(';');  // "TKK='xxxxxxxxx.yyyyyyyyy'"
+    tkkFunc = tkkFunc.substring(5 /* length of "TKK='" */, tkkFunc.lastIndexOf('\''));
+//    log_i("tkk=%s", tkkFunc.c_str());
+
+    // create token
+    int periodPos = tkkFunc.indexOf('.');
+    String key1 = tkkFunc.substring(0,periodPos);
+    String key2 = tkkFunc.substring(periodPos + 1);
+    long long int a, b;
+    a = b = strtoll(key1.c_str(), NULL, 10);
+
     int f;
-    int len = speech.length();
-    String para;
+    int len = strlen(speech.c_str());
     for (f = 0; f < len; f++) {
-        a1 += speech[f];
-        a1 = XL(a1, "+-a^+6");
-     }
-     a1 = XL(a1, "+-3^+b+-f");
-     a1 = a1 ^ (strtoll(key2.c_str(), NULL, 10));
-     if (0 > a1) {
-       a1 = (a1 & 2147483647) + 2147483648;
-     }
-     a1 = a1 % 1000000;
-     String token=String(lltoa(a1, 10)) + '.' + String(lltoa(a1 ^ b1, 10));
-     int i,j;
-     const char* t = speech.c_str();
-     for(i=0,j=0;i<strlen(t);i++) {
-       if (t[i] < 0x80 || t[i] > 0xbf) {
-         j++;
-       }
-     }
-     String tts= String("https://") + host + path +
+      a += speech[f];
+      a = XL(a, "+-a^+6");
+    }
+    a = XL(a, "+-3^+b+-f");
+    a = a ^ (strtoll(key2.c_str(), NULL, 10));
+    if (0 > a) {
+      a = (a & 2147483647) + 2147483648;
+    }
+    a = a % 1000000;
+    String token=String(lltoa(a, 10)) + '.' + lltoa(a ^ b, 10);
+
+    int i,j;
+    const char* t = speech.c_str();
+    for(i=0,j=0;i<strlen(t);i++) {
+      if (t[i] < 0x80 || t[i] > 0xbf) {
+        j++;
+      }
+    }
+//    log_i("Token=%s", token.c_str());
+
+    String tts= String("https://") + host + path +
                         "?ie=UTF-8&q=" + urlencode(speech) +
                         "&tl=" + lang +
                         "&textlen=" + String(j) +
