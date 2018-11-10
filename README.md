@@ -64,42 +64,43 @@ void loop()
 
 // next code is optional:
 void vs1053_info(const char *info) {                // called from vs1053
-    Serial.print("DEBUG:       ");
-    Serial.print(info);                             // debug infos
+    Serial.print("DEBUG:        ");
+    Serial.println(info);                           // debug infos
 }
 void vs1053_showstation(const char *info){          // called from vs1053
-    Serial.print("STATION:     ");
+    Serial.print("STATION:      ");
     Serial.println(info);                           // Show station name
 }
 void vs1053_showstreamtitle(const char *info){      // called from vs1053
-    Serial.print("STREAMTITLE: ");
-    Serial.print(info);                             // Show title
+    Serial.print("STREAMTITLE:  ");
+    Serial.println(info);                           // Show title
 }
 void vs1053_showstreaminfo(const char *info){       // called from vs1053
-    Serial.print("STREAMINFO:  ");
-    Serial.print(info);                             // Show streaminfo
+    Serial.print("STREAMINFO:   ");
+    Serial.println(info);                           // Show streaminfo
 }
 void vs1053_eof_mp3(const char *info){              // called from vs1053
-      Serial.print("vs1053_eof: ");
-      Serial.print(info);                           // end of mp3 file (filename)
+    Serial.print("vs1053_eof:   ");
+    Serial.print(info);                             // end of mp3 file (filename)
 }
-void vs1053_bitrate(const char *br){		    // called from vs1053
-      Serial.print("BITRATE: ");
-      Serial.println(String(br)+"kBit/s");          // bitrate of current stream
+void vs1053_bitrate(const char *br){                // called from vs1053
+    Serial.print("BITRATE:      ");
+    Serial.println(String(br)+"kBit/s");            // bitrate of current stream
 }
 void vs1053_commercial(const char *info){           // called from vs1053
-    Serial.print("ADVERTISING: ");
+    Serial.print("ADVERTISING:  ");
     Serial.println(String(info)+"sec");             // info is the duration of advertising
 }
 void vs1053_icyurl(const char *info){               // called from vs1053
-    Serial.print("Homepage: ");  
+    Serial.print("Homepage:     ");
     Serial.println(info);                           // info contains the URL
 }
 void vs1053_eof_speech(const char *info){           // called from vs1053
-    Serial.println(info);                           
+    Serial.print("end of speech:");
+    Serial.println(info);
 }
 void vs1053_lasthost(const char *info){             // really connected URL
-    Serial.print("lastURL: ");
+    Serial.print("lastURL:      ");
     Serial.println(info);
 }
 
