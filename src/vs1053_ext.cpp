@@ -939,8 +939,8 @@ bool VS1053::connecttohost(String host){
     m_ssl=false;
     setDatamode(VS1053_HEADER);                             // Handle header
 
-    if(host.startsWith("http://")) {host=host.substring(7); m_ssl=false; ;}
-    if(host.startsWith("https://")){host=host.substring(8); m_ssl=true;}
+    if(host.startsWith("http://")) {host=host.substring(7); m_ssl=false;}
+    if(host.startsWith("https://")){host=host.substring(8); m_ssl=true; port=443;}
     clientsecure.stop(); clientsecure.flush(); // release memory
 
     if(host.endsWith(".m3u")||
@@ -988,7 +988,7 @@ bool VS1053::connecttohost(String host){
         }
     }
     if(m_ssl==true){
-        if(clientsecure.connect(hostwoext.c_str(), 443)){
+        if(clientsecure.connect(hostwoext.c_str(), port)){
             if(vs1053_info) vs1053_info("SSL/TLS Connected to server");
             clientsecure.print(resp);
             return true;
