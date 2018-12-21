@@ -1,3 +1,10 @@
+/*
+ *  vs1053_ext.h
+ *
+ *  Created on: Jul 09.2017
+ *  Updated on: Dec 21 2018
+ *      Author: Wolle
+ */
 
 #ifndef _vs1053_ext
 #define _vs1053_ext

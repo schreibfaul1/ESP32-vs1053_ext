@@ -1,3 +1,11 @@
+/*
+ *  vs1053_ext.cpp
+ *
+ *  Created on: Jul 09.2017
+ *  Updated on: Dec 21 2018
+ *      Author: Wolle
+ */
+
 #include "vs1053_ext.h"
 
 VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin) :
@@ -459,6 +467,8 @@ void VS1053::handlebyte(uint8_t b){
                 else if(lcml.startsWith("icy-name:")){
                     m_icyname=m_metaline.substring(9);          // Get station name
                     m_icyname.trim();                           // Remove leading and trailing spaces
+                    sprintf(sbuf, "icy-name=%s", m_icyname.c_str());
+                    if(vs1053_info) vs1053_info(sbuf);
                     if(m_icyname!=""){
                         if(vs1053_showstation) vs1053_showstation(m_icyname.c_str());
                     }
@@ -1073,20 +1083,23 @@ bool VS1053::connecttospeech(String speech, String lang){
 
     String tkkFunc;
     char ch;
-    do {  // search for TKK
+    do {  // search for tkk:
         tkkFunc = "";
         clientsecure.readBytes(&ch, 1);
-        if (ch != 'T') continue;
+        if (ch != 't') continue;
         tkkFunc += String(ch);
         clientsecure.readBytes(&ch, 1);
-        if (ch != 'K') continue;
+        if (ch != 'k') continue;
         tkkFunc += String(ch);
         clientsecure.readBytes(&ch, 1);
-        if (ch != 'K') continue;
+        if (ch != 'k') continue;
         tkkFunc += String(ch);
-    } while(tkkFunc.length() < 3);
-    tkkFunc +=  clientsecure.readStringUntil(';');  // "TKK='xxxxxxxxx.yyyyyyyyy'"
-    tkkFunc = tkkFunc.substring(5 /* length of "TKK='" */, tkkFunc.lastIndexOf('\''));
+        clientsecure.readBytes(&ch, 1);
+        if (ch != ':') continue;
+        tkkFunc += String(ch);
+    } while(tkkFunc.length() < 4);
+    tkkFunc +=  clientsecure.readStringUntil(',');  // "tkk='xxxxxxxxx.yyyyyyyyy'"
+    tkkFunc = tkkFunc.substring(5 /* length of "tkk='" */, tkkFunc.lastIndexOf('\''));
 //    log_i("tkk=%s", tkkFunc.c_str());
 
     // create token
