@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Dec 21 2018
+ *  Updated on: Dec 30 2018
  *      Author: Wolle
  */
 
@@ -11,14 +11,16 @@
 
 #include "Arduino.h"
 #include "SPI.h"
-#include "WiFiClientSecure.h"
 #include "SD.h"
 #include "FS.h"
+#include "WiFiClient.h"
+#include "WiFiClientSecure.h"
 
 extern __attribute__((weak)) void vs1053_info(const char*);
 extern __attribute__((weak)) void vs1053_showstreamtitle(const char*);
 extern __attribute__((weak)) void vs1053_showstation(const char*);
 extern __attribute__((weak)) void vs1053_showstreaminfo(const char*);
+extern __attribute__((weak)) void vs1053_id3data(const char*); //ID3 metadata
 extern __attribute__((weak)) void vs1053_eof_mp3(const char*);
 extern __attribute__((weak)) void vs1053_eof_speech(const char*);
 extern __attribute__((weak)) void vs1053_bitrate(const char*);
@@ -78,12 +80,13 @@ class VS1053
     char path[256];
 
     uint8_t  m_ringbuf[0x5000]; // 20480d           // Ringbuffer for mp3 stream
+    uint8_t  m_rev=0;                               // Revision
     const uint16_t m_ringbfsiz=sizeof(m_ringbuf);   // Ringbuffer size
     uint16_t m_rbwindex=0;                          // Ringbuffer writeindex
     uint16_t m_rbrindex=0;                          // Ringbuffer readindex
     uint16_t m_ringspace=0;                         // Ringbuffer free space
     uint16_t m_rcount=0;                            // Ringbuffer used space
-
+    int             m_id3Size=0;                    // length id3 tag
     boolean         m_ssl=false;
     uint32_t        m_t0;                           // Keep alive, end a playlist
     uint8_t         m_endFillByte ;                 // Byte to send when stopping song
@@ -115,6 +118,8 @@ class VS1053
     boolean         m_f_plsTitle=false;             // Set if StationName is knowm
     boolean         m_f_ogg=false;                  // Set if oggstream
     boolean         m_f_stream_ready=false;         // Set after connecttohost and first streamdata are available
+    boolean         m_f_unsync = false;
+    boolean         m_f_exthdr = false;             // ID3 extended header
     String          m_plsURL;
     String          m_plsStationName;
     const char volumetable[22]={   0,50,60,65,70,75,80,82,84,86,
@@ -151,6 +156,7 @@ class VS1053
     String   urlencode(String str);
     long long int XL (long long int a, const char* b);
     char*    lltoa(long long val, int base);
+    void     readID3Metadata();
     inline bool data_request() const
     {
       return ( digitalRead ( dreq_pin ) == HIGH ) ;
@@ -176,6 +182,9 @@ class VS1053
     bool     connecttohost(String host);
     bool	 connecttoSD(String sdfile);
     bool     connecttospeech(String speech, String lang);
+    uint32_t getFileSize();
+    uint32_t getFilePos();
+    bool     setFilePos(uint32_t pos);
     inline uint8_t getDatamode(){
        	return m_datamode;
        }
