@@ -8,8 +8,19 @@
 
 #include "vs1053_ext.h"
 
-VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin) :
+
+VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin ) :
         cs_pin(_cs_pin), dcs_pin(_dcs_pin), dreq_pin(_dreq_pin)
+{
+    SPIbus = &SPI;
+    m_endFillByte=0;
+    curvol=50;
+    m_t0=0;
+    m_LFcount=0;
+}
+
+VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, SPIClass *_spi_bus ) :
+        cs_pin(_cs_pin), dcs_pin(_dcs_pin), dreq_pin(_dreq_pin), SPIbus(_spi_bus)
 {
     m_endFillByte=0;
     curvol=50;
@@ -23,17 +34,17 @@ VS1053::~VS1053(){
 void VS1053::control_mode_off()
 {
     CS_HIGH();                                  // End control mode
-    SPI.endTransaction();                       // Allow other SPI users
+    SPIbus->endTransaction();                   // Allow other SPI users
 }
 void VS1053::control_mode_on()
 {
-    SPI.beginTransaction(VS1053_SPI);           // Prevent other SPI users
+    SPIbus->beginTransaction(VS1053_SPI);       // Prevent other SPI users
     DCS_HIGH();                                 // Bring slave in control mode
     CS_LOW();
 }
 void VS1053::data_mode_on()
 {
-    SPI.beginTransaction(VS1053_SPI);           // Prevent other SPI users
+    SPIbus->beginTransaction(VS1053_SPI);       // Prevent other SPI users
     CS_HIGH();                                  // Bring slave in data mode
     DCS_LOW();
 }
@@ -41,17 +52,17 @@ void VS1053::data_mode_off()
 {
     //digitalWrite(dcs_pin, HIGH);              // End data mode
     DCS_HIGH();
-    SPI.endTransaction();                       // Allow other SPI users
+    SPIbus->endTransaction();                   // Allow other SPI users
 }
 //---------------------------------------------------------------------------------------------------------------------
 uint16_t VS1053::read_register(uint8_t _reg)
 {
     uint16_t result=0;
     control_mode_on();
-    SPI.write(3);                                // Read operation
-    SPI.write(_reg);                             // Register to write (0..0xF)
+    SPIbus->write(3);                            // Read operation
+    SPIbus->write(_reg);                         // Register to write (0..0xF)
     // Note: transfer16 does not seem to work
-    result=(SPI.transfer(0xFF) << 8) | (SPI.transfer(0xFF));  // Read 16 bits data
+    result=(SPIbus->transfer(0xFF) << 8) | (SPIbus->transfer(0xFF));  // Read 16 bits data
     await_data_request();                        // Wait for DREQ to be HIGH again
     control_mode_off();
     return result;
@@ -60,9 +71,9 @@ uint16_t VS1053::read_register(uint8_t _reg)
 void VS1053::write_register(uint8_t _reg, uint16_t _value)
 {
     control_mode_on();
-    SPI.write(2);                                // Write operation
-    SPI.write(_reg);                             // Register to write (0..0xF)
-    SPI.write16(_value);                         // Send 16 bits data
+    SPIbus->write(2);                            // Write operation
+    SPIbus->write(_reg);                         // Register to write (0..0xF)
+    SPIbus->write16(_value);                     // Send 16 bits data
     await_data_request();
     control_mode_off();
 }
@@ -80,7 +91,7 @@ void VS1053::sdi_send_buffer(uint8_t* data, size_t len)
             chunk_length=vs1053_chunk_size;
         }
         len-=chunk_length;
-        SPI.writeBytes(data, chunk_length);
+        SPIbus->writeBytes(data, chunk_length);
         data+=chunk_length;
     }
     data_mode_off();
@@ -100,7 +111,7 @@ void VS1053::sdi_send_fillers(size_t len){
         }
         len-=chunk_length;
         while(chunk_length--){
-            SPI.write(m_endFillByte);
+            SPIbus->write(m_endFillByte);
         }
     }
     data_mode_off();
