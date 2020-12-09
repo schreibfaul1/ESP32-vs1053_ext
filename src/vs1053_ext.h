@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Dec 30 2018
+ *  Updated on: Dec 09 2020
  *      Author: Wolle
  */
 
@@ -154,8 +154,6 @@ class VS1053
     void     stopSong() ;                                // Finish playing a song. Call this after
                                                          // the last playChunk call.
     String   urlencode(String str);
-    long long int XL (long long int a, const char* b);
-    char*    lltoa(long long val, int base);
     void     readID3Metadata();
     inline bool data_request() const
     {
