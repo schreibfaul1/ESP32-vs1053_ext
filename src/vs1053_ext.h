@@ -75,6 +75,7 @@ class VS1053
     const uint8_t SM_LINE1          = 14 ;        	// Bitnumber in SCI_MODE for Line input
 
     SPISettings     VS1053_SPI;                     // SPI settings for this slave
+    SPIClass        *SPIbus         = 0;            // SPI bus object used by this slave
 
     char sbuf[256];
     char path[256];
@@ -164,6 +165,7 @@ class VS1053
   public:
     // Constructor.  Only sets pin values.  Doesn't touch the chip.  Be sure to call begin()!
     VS1053 ( uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin ) ;
+    VS1053 ( uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, SPIClass *_spi_bus ) ;
     ~VS1053();
 
     void     begin() ;                                  // Begin operation.  Sets pins correctly,
