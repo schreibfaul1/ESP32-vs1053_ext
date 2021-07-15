@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jan 17 2021
+ *  Updated on: Jul 15 2021
  *      Author: Wolle
  */
 
@@ -66,6 +66,26 @@ void VS1053::write_register(uint8_t _reg, uint16_t _value)
     SPI.write16(_value);                         // Send 16 bits data
     await_data_request();
     control_mode_off();
+}
+//---------------------------------------------------------------------------------------------------------------------
+size_t VS1053::sendBytes(uint8_t* data, size_t len){
+    size_t chunk_length = 0;                         // Length of chunk 32 byte or shorter
+    size_t bytesDecoded = 0;
+
+    data_mode_on();
+    while(len){                                  // More to do?
+        if(!digitalRead(dreq_pin)) break;
+        chunk_length = len;
+        if(len > vs1053_chunk_size){
+            chunk_length = vs1053_chunk_size;
+        }
+        SPI.writeBytes(data, chunk_length);
+        data         += chunk_length;
+        len          -= chunk_length;
+        bytesDecoded += chunk_length;        
+    }
+    data_mode_off();
+    return bytesDecoded;
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::sdi_send_buffer(uint8_t* data, size_t len)
@@ -233,17 +253,12 @@ void VS1053::printDetails(){
     uint16_t regbuf[16];
     uint8_t i;
     String reg, tmp;
-//    String bit_rep[16] = {
-//        [ 0] = "0000", [ 1] = "0001", [ 2] = "0010", [ 3] = "0011",
-//        [ 4] = "0100", [ 5] = "0101", [ 6] = "0110", [ 7] = "0111",
-//        [ 8] = "1000", [ 9] = "1001", [10] = "1010", [11] = "1011",
-//        [12] = "1100", [13] = "1101", [14] = "1110", [15] = "1111",
-//    };
+
     String regName[16] = {
-        [ 0] = "MODE       ", [ 1] = "STATUS     ", [ 2] = "BASS       ", [ 3] = "CLOCKF     ",
-        [ 4] = "DECODE_TIME", [ 5] = "AUDATA     ", [ 6] = "WRAM       ", [ 7] = "WRAMADDR   ",
-        [ 8] = "HDAT0      ", [ 9] = "HDAT1      ", [10] = "AIADDR     ", [11] = "VOL        ",
-        [12] = "AICTRL0    ", [13] = "AICTRL1    ", [14] = "AICTRL2    ", [15] = "AICTRL3    ",
+        "MODE       ", "STATUS     ", "BASS       ", "CLOCKF     ",
+        "DECODE_TIME", "AUDATA     ", "WRAM       ", "WRAMADDR   ",
+        "HDAT0      ", "HDAT1      ", "AIADDR     ", "VOL        ",
+        "AICTRL0    ", "AICTRL1    ", "AICTRL2    ", "AICTRL3    ",
     };
 
     if(vs1053_info) vs1053_info("REG         Contents   bin   hex");
@@ -730,169 +745,195 @@ uint16_t VS1053::ringused(){
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::loop(){
-
-    uint16_t part=0;                                        // part at the end of the ringbuffer
-    uint16_t bcs=0;                                         // bytes can current send
-    uint16_t maxchunk=0x1000;                               // max number of bytes to read, 4096d is enough
-    uint16_t btp=0;                                         // bytes to play
-    int16_t  res=0;                                         // number of bytes getting from client
+    // - localfile - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if(m_f_localfile) {                                      // Playing file fron SPIFFS or SD?
+        processLocalFile();
+    }
+    // - webstream - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if(m_f_webstream) {                                      // Playing file from URL?
+        processWebStream();
+    }
+    return;
+}
+//---------------------------------------------------------------------------------------------------------------------
+void VS1053::processLocalFile(){
     uint32_t av=0;                                          // available in stream (uin16_t is to small by playing from SD)
+    uint16_t maxchunk=0x1000;                               // max number of bytes to read    
+    av=mp3file.available();                                 // Bytes left in file
+    if(av < maxchunk) maxchunk=av;                          // Reduce byte count for this mp3loop()
+    if(maxchunk){                                           // Anything to read?
+        m_btp=mp3file.read(m_ringbuf, maxchunk);            // Read a block of data
+        sdi_send_buffer(m_ringbuf,m_btp);
+    }
+    if(av == 0){                                            // No more data from SD Card
+        mp3file.close();
+        m_f_localfile=false;
+        sprintf(sbuf,"End of mp3file %s", m_mp3title.c_str());
+        if(vs1053_info) vs1053_info(sbuf);
+        if(vs1053_eof_mp3) vs1053_eof_mp3(m_mp3title.c_str());
+    }
+}
+//---------------------------------------------------------------------------------------------------------------------
+void VS1053::processWebStream(){
+    uint32_t av   = 0;                                      // available in stream (uin16_t is to small by playing from SD)
+    uint16_t part = 0;                                      // part at the end of the ringbuffer
+    int16_t  res  = 0;                                      // number of bytes getting from client
+    uint16_t btp  = 0;                                      // bytes to play
+    uint16_t bcs  = 0;                                      // bytes can current send
+    uint16_t bdc  = 0;                                      // bytes decoded
+    static uint32_t i=0;                                    // Count loops if ringbuffer is empty
+    static uint32_t count=0;                                // Bytecounter between metadata
     static uint16_t rcount=0;                               // max bytes handover to the player
     static uint32_t chunksize=0;                            // Chunkcount read from stream
-    static uint32_t count=0;                                // Bytecounter between metadata
-    static uint32_t i=0;                                    // Count loops if ringbuffer is empty
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if(m_f_localfile){                                      // Playing file from SD card?
-         av=mp3file.available();                            // Bytes left in file
-         if(av < maxchunk) maxchunk=av;                     // Reduce byte count for this mp3loop()
-         if(maxchunk){                                      // Anything to read?
-             m_btp=mp3file.read(m_ringbuf, maxchunk);       // Read a block of data
-             sdi_send_buffer(m_ringbuf,m_btp);
-         }
-         if(av == 0){                                       // No more data from SD Card
-             mp3file.close();
-             m_f_localfile=false;
-             sprintf(sbuf,"End of mp3file %s", m_mp3title.c_str());
-             if(vs1053_info) vs1053_info(sbuf);
-             if(vs1053_eof_mp3) vs1053_eof_mp3(m_mp3title.c_str());
-         }
+    if(m_ssl==false) av=client.available();// Available from stream
+    if(m_ssl==true)  av=clientsecure.available();// Available from stream
+    if(av){
+        m_ringspace=m_ringbfsiz - m_rcount;
+        part=m_ringbfsiz - m_rbwindex;                  // Part of length to xfer
+        if(part>m_ringspace)part=m_ringspace;
+        if(m_ssl==false) res=client.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
+        if(m_ssl==true)  res=clientsecure.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
+        if(res>0){
+            m_rcount+=res;
+            m_rbwindex+=res;
+        }
+        if(m_rbwindex==m_ringbfsiz) m_rbwindex=0;
     }
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if(m_f_webstream){                                      // Playing file from URL?
-        if(m_ssl==false) av=client.available();// Available from stream
-        if(m_ssl==true)  av=clientsecure.available();// Available from stream
-        if(av){
-            m_ringspace=m_ringbfsiz - m_rcount;
-            part=m_ringbfsiz - m_rbwindex;                  // Part of length to xfer
-            if(part>m_ringspace)part=m_ringspace;
-            if(m_ssl==false) res=client.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
-            if(m_ssl==true)  res=clientsecure.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
-            if(res>0){
-                m_rcount+=res;
-                m_rbwindex+=res;
-            }
-            if(m_rbwindex==m_ringbfsiz) m_rbwindex=0;
+    if(m_datamode == VS1053_PLAYLISTDATA){
+        if(m_t0+49<millis()) {
+            //log_i("terminate metaline after 50ms");     // if mo data comes from host
+            handlebyte('\n');                           // send LF
         }
-        if(m_datamode == VS1053_PLAYLISTDATA){
-            if(m_t0+49<millis()) {
-                //log_i("terminate metaline after 50ms");     // if mo data comes from host
-                handlebyte('\n');                           // send LF
-            }
-        }
-        if(m_chunked==false){rcount=m_rcount;}
-        else{
-            while(m_rcount){
-                if((m_chunkcount+rcount) == 0|| m_firstchunk){             // Expecting a new chunkcount?
-                    uint8_t b =m_ringbuf[m_rbrindex];
-                    if(b=='\r'){}
-                    else if(b=='\n'){
-                        m_chunkcount=chunksize;
-                        m_firstchunk=false;
-                        rcount=0;
-                        chunksize=0;
-                    }
-                    else{
-
-                        // We have received a hexadecimal character.  Decode it and add to the result.
-                        b=toupper(b) - '0';                         // Be sure we have uppercase
-                        if(b > 9) b = b - 7;                        // Translate A..F to 10..15
-                        chunksize=(chunksize << 4) + b;
-                    }
-                    if(++m_rbrindex == m_ringbfsiz){        // Increment pointer and
-                        m_rbrindex=0;                       // wrap at end
-                    }
-                    m_rcount--;
-                }
-                else break;
-            }
-            if(rcount==0){ //all bytes consumed?
-                if(m_chunkcount>m_rcount){
-                    m_chunkcount-=m_rcount;
-                    rcount=m_rcount;
+    }
+    if(m_chunked==false){rcount=m_rcount;}
+    else{
+        while(m_rcount){
+            if((m_chunkcount+rcount) == 0|| m_firstchunk){             // Expecting a new chunkcount?
+                uint8_t b =m_ringbuf[m_rbrindex];
+                if(b=='\r'){}
+                else if(b=='\n'){
+                    m_chunkcount=chunksize;
+                    m_firstchunk=false;
+                    rcount=0;
+                    chunksize=0;
                 }
                 else{
-                    rcount=m_chunkcount;
-                    m_chunkcount-=rcount;
+                    // We have received a hexadecimal character.  Decode it and add to the result.
+                    b=toupper(b) - '0';                         // Be sure we have uppercase
+                    if(b > 9) b = b - 7;                        // Translate A..F to 10..15
+                    chunksize=(chunksize << 4) + b;
                 }
+                if(++m_rbrindex == m_ringbfsiz){        // Increment pointer and
+                    m_rbrindex=0;                       // wrap at end
+                }
+                m_rcount--;
+            }
+            else break;
+        }
+        if(rcount==0){ //all bytes consumed?
+            if(m_chunkcount>m_rcount){
+                m_chunkcount-=m_rcount;
+                rcount=m_rcount;
+            }
+            else{
+                rcount=m_chunkcount;
+                m_chunkcount-=rcount;
             }
         }
+    }
+    //*******************************************************************************
+    if(m_datamode==VS1053_OGG){
+        if(rcount>1024) btp=1024; else btp=rcount;  // reduce chunk thereby the ringbuffer can be proper fillied
+        if(btp){  //bytes to play
+            rcount-=btp;
+            if((m_rbrindex + btp) >= m_ringbfsiz){
+                part=m_ringbfsiz - m_rbrindex;
+                sdi_send_buffer(m_ringbuf+ m_rbrindex, part);
+                m_rbrindex=0;
+                m_rcount-=part;
+                btp-=part;
+            }
+            if(btp){                                         // Rest to do?
+                sdi_send_buffer(m_ringbuf+ m_rbrindex, btp); // Copy full or last part
+                m_rbrindex+=btp;                             // Point to next free byte
+                m_rcount-=btp;                               // Adjust number of bytes
+            }
+        } return;
+    }
+    //*******************************************************************************
+    if(m_datamode == VS1053_DATA){
+   
+        if(rcount > 4096){btp = 4096;  }
+        else             {btp = rcount;}  // reduce chunk thereby the ringbuffer can be proper fillied
+   
+        if(count > btp)  {bcs = btp;   }
+        else             {bcs = count; }
 
-        //*******************************************************************************
-
-        if(m_datamode==VS1053_OGG){
-            if(rcount>1024) btp=1024; else btp=rcount;  // reduce chunk thereby the ringbuffer can be proper fillied
-            if(btp){  //bytes to play
-                rcount-=btp;
-                if((m_rbrindex + btp) >= m_ringbfsiz){
-                    part=m_ringbfsiz - m_rbrindex;
-                    sdi_send_buffer(m_ringbuf+ m_rbrindex, part);
-                    m_rbrindex=0;
-                    m_rcount-=part;
-                    btp-=part;
+        if(bcs){ // bytes can send
+            // First see if we must split the transfer.  We cannot write past the ringbuffer end.
+            if((m_rbrindex + bcs) >= m_ringbfsiz){
+                part = m_ringbfsiz - m_rbrindex;                // Part of length to xfer
+                bdc = sendBytes(m_ringbuf + m_rbrindex, part);  // Copy first part
+                if(bdc == part){
+                    m_rbrindex  = 0;
+                    m_rcount   -= bdc;                          // Adjust number of bytes
+                    rcount     -= bdc;
+                    bcs        -= bdc;                          // Adjust rest length
+                    count      -= bdc;
                 }
-                if(btp){                                         // Rest to do?
-                    sdi_send_buffer(m_ringbuf+ m_rbrindex, btp); // Copy full or last part
-                    m_rbrindex+=btp;                             // Point to next free byte
-                    m_rcount-=btp;                               // Adjust number of bytes
-                }
-            } return;
-        }
-        if(m_datamode==VS1053_DATA){
-            if(rcount>1024)btp=1024;  else btp=rcount;  // reduce chunk thereby the ringbuffer can be proper fillied
-            if(count>btp){bcs=btp; count-=bcs;} else{bcs=count; count=0;}
-            if(bcs){ // bytes can send
-              rcount-=bcs;
-                // First see if we must split the transfer.  We cannot write past the ringbuffer end.
-                if((m_rbrindex + bcs) >= m_ringbfsiz){
-                    part=m_ringbfsiz - m_rbrindex;              // Part of length to xfer
-                    sdi_send_buffer(m_ringbuf+ m_rbrindex, part);  // Copy first part
-                    m_rbrindex=0;
-                    m_rcount-=part;                             // Adjust number of bytes
-                    bcs-=part;                                  // Adjust rest length
-                }
-                if(bcs){                                        // Rest to do?
-                    sdi_send_buffer(m_ringbuf+ m_rbrindex, bcs); // Copy full or last part
-                    m_rbrindex+=bcs;                            // Point to next free byte
-                    m_rcount-=bcs;                              // Adjust number of bytes
-                }
-                if(count==0){
-                    m_datamode=VS1053_METADATA;
-                    m_firstmetabyte=true;
+                else{
+                    m_rbrindex += bdc;
+                    bcs         = 0;                            // can't stuff anymore
+                    m_rcount   -= bdc;                          // Adjust number of bytes
+                    rcount     -= bdc;
+                    count      -= bdc;
                 }
             }
+            if(bcs){                                            // Rest to do?
+                bdc = sendBytes(m_ringbuf+ m_rbrindex, bcs);    // Copy full or last part
+                m_rbrindex+=bdc;                                // Point to next free byte
+                m_rcount-=bdc;                                  // Adjust number of bytes
+                rcount -= bdc;
+                count -= bdc;
+            }
+            if(count==0){
+                m_datamode=VS1053_METADATA;
+                m_firstmetabyte=true;
+            }
+            
         }
-        else{ //!=DATA
-            while(rcount){
-                handlebyte(m_ringbuf[m_rbrindex]);
-                if(++m_rbrindex == m_ringbfsiz){                // Increment pointer and
-                    m_rbrindex=0;                               // wrap at end
-                }
-                rcount--;
-                // call handlebyte>connecttohost can set m_rcount to zero (empty ringbuff)
-                if(m_rcount>0) m_rcount--;                   // no underrun
-                if(m_rcount==0)rcount=0; // exit this while()
-                if(m_datamode==VS1053_DATA){
-                    count=m_metaint;
-                    if(m_metaint==0) m_datamode=VS1053_OGG; // is likely no ogg but a stream without metadata, can be mms
-                    break;
-                }
+ 
+    }
+    else{ //!=DATA
+        while(rcount){
+            handlebyte(m_ringbuf[m_rbrindex]);
+            if(++m_rbrindex == m_ringbfsiz){                // Increment pointer and
+                m_rbrindex=0;                               // wrap at end
+            }
+            rcount--;
+            // call handlebyte>connecttohost can set m_rcount to zero (empty ringbuff)
+            if(m_rcount>0) m_rcount--;                   // no underrun
+            if(m_rcount==0)rcount=0; // exit this while()
+            if(m_datamode==VS1053_DATA){
+                count=m_metaint;
+                if(m_metaint==0) m_datamode=VS1053_OGG; // is likely no ogg but a stream without metadata, can be mms
+                break;
             }
         }
-        if((m_f_stream_ready==false)&&(ringused()!=0)){ // first streamdata recognised
-            m_f_stream_ready=true;
+    }
+    if((m_f_stream_ready==false)&&(ringused()!=0)){ // first streamdata recognised
+        m_f_stream_ready=true;
+    }
+    if(m_f_stream_ready==true){
+        if(ringused()==0){  // empty buffer, broken stream or bad bitrate?
+            i++;
+            if(i>150000){    // wait several seconds
+                i=0;
+                if(vs1053_info) vs1053_info("Stream lost -> try new connection");
+                connecttohost(m_lastHost);} // try a new connection
         }
-        if(m_f_stream_ready==true){
-            if(ringused()==0){  // empty buffer, broken stream or bad bitrate?
-                i++;
-                if(i>150000){    // wait several seconds
-                    i=0;
-                    if(vs1053_info) vs1053_info("Stream lost -> try new connection");
-                    connecttohost(m_lastHost);} // try a new connection
-            }
-            else i=0;
-        }
-    } // end if(webstream)
+        else i=0;
+    }
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::stop_mp3client(){

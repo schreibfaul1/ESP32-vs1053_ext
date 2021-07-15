@@ -143,6 +143,7 @@ class VS1053
     uint16_t read_register ( uint8_t _reg ) ;
     void     write_register ( uint8_t _reg, uint16_t _value );
     void     sdi_send_buffer ( uint8_t* data, size_t len ) ;
+    size_t   sendBytes(uint8_t* data, size_t len);
     void     sdi_send_fillers ( size_t length ) ;
     void     wram_write ( uint16_t address, uint16_t data ) ;
     uint16_t wram_read ( uint16_t address ) ;
@@ -155,6 +156,8 @@ class VS1053
                                                          // the last playChunk call.
     String   urlencode(String str);
     void     readID3Metadata();
+    void     processLocalFile();
+    void     processWebStream();
     inline bool data_request() const
     {
       return ( digitalRead ( dreq_pin ) == HIGH ) ;
