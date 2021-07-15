@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jan 17 2021
+ *  Updated on: Jul 15 2021
  *      Author: Wolle
  */
 
@@ -12,7 +12,10 @@
 #include "Arduino.h"
 #include "SPI.h"
 #include "SD.h"
+#include "SD_MMC.h"
+#include "SPIFFS.h"
 #include "FS.h"
+#include "FFat.h"
 #include "WiFiClient.h"
 #include "WiFiClientSecure.h"
 
@@ -36,14 +39,14 @@ extern __attribute__((weak)) void vs1053_lasthost(const char*);
 #define VS1053_PLAYLISTDATA   64
 #define VS1053_OGG           128
 
-class VS1053
-{
-  private:
+class VS1053{
+
+private:
     WiFiClient client;
     WiFiClientSecure clientsecure;
-    File mp3file;
-  private:
+    File audiofile;
 
+private:
     uint8_t       cs_pin ;                        	// Pin where CS line is connected
     uint8_t       dcs_pin ;                       	// Pin where DCS line is connected
     uint8_t       dreq_pin ;                      	// Pin where DREQ line is connected
@@ -76,7 +79,7 @@ class VS1053
 
     SPISettings     VS1053_SPI;                     // SPI settings for this slave
 
-    char sbuf[256];
+    char chbuf[256];
     char path[256];
 
     uint8_t  m_ringbuf[0x5000]; // 20480d           // Ringbuffer for mp3 stream
@@ -124,22 +127,18 @@ class VS1053
     String          m_plsStationName;
     const char volumetable[22]={   0,50,60,65,70,75,80,82,84,86,
                                   88,90,91,92,93,94,95,96,97,98,99,100}; //22 elements
-  protected:
+protected:
     inline void DCS_HIGH() {GPIO.out_w1ts = (1 << dcs_pin);}
     inline void DCS_LOW()  {GPIO.out_w1tc = (1 << dcs_pin);}
     inline void CS_HIGH()  {GPIO.out_w1ts = (1 << cs_pin);}
     inline void CS_LOW()   {GPIO.out_w1tc = (1 << cs_pin);}
-    inline void await_data_request() const
-    {
-      while ( !digitalRead ( dreq_pin ) )
-      {
-        NOP() ;                                   	// Very short delay
-      }
+    inline void await_data_request() const{
+        while(!digitalRead(dreq_pin)){ NOP();}                                  	// Very short delay
     }
-    void control_mode_on();
-    void control_mode_off();
-    void data_mode_on();
-    void data_mode_off();
+    void     control_mode_on();
+    void     control_mode_off();
+    void     data_mode_on();
+    void     data_mode_off();
     uint16_t read_register ( uint8_t _reg ) ;
     void     write_register ( uint8_t _reg, uint16_t _value );
     void     sdi_send_buffer ( uint8_t* data, size_t len ) ;
@@ -158,13 +157,12 @@ class VS1053
     void     readID3Metadata();
     void     processLocalFile();
     void     processWebStream();
-    inline bool data_request() const
-    {
-      return ( digitalRead ( dreq_pin ) == HIGH ) ;
-    }
+    void     UTF8toASCII(char* str);
+
+    inline bool data_request(){return(digitalRead(dreq_pin) == HIGH);}
 
 
-  public:
+public:
     // Constructor.  Only sets pin values.  Doesn't touch the chip.  Be sure to call begin()!
     VS1053 ( uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin ) ;
     ~VS1053();
@@ -178,21 +176,50 @@ class VS1053
     void     printDetails();                            // Print configuration details to serial output.
     bool     printVersion();                            // Print ID and version of vs1053 chip
     void     softReset() ;                              // Do a soft reset
-    void 	 loop();
+    void 	   loop();
     uint16_t ringused();
     bool     connecttohost(String host);
-    bool	 connecttoSD(String sdfile);
+    bool	   connecttoSD(String sdfile);
+    bool     connecttoSD(const char* sdfile);
+    bool     connecttoFS(fs::FS &fs, const char* path);
     bool     connecttospeech(String speech, String lang);
     uint32_t getFileSize();
     uint32_t getFilePos();
     bool     setFilePos(uint32_t pos);
-    inline uint8_t getDatamode(){
-       	return m_datamode;
-       }
-    inline void setDatamode(uint8_t dm){
-       	m_datamode=dm;
-       }
+
+    // implement several function with respect to the index of string
+    bool startsWith (const char* base, const char* str) { return (strstr(base, str) - base) == 0;}
+    bool endsWith (const char* base, const char* str) {
+        int blen = strlen(base);
+        int slen = strlen(str);
+        return (blen >= slen) && (0 == strcmp(base + blen - slen, str));
+    }
+    int indexOf (const char* base, const char* str, int startIndex) {
+        int result;
+        int baselen = strlen(base);
+        if (strlen(str) > baselen || startIndex > baselen) result = -1;
+        else {
+            char* pos = strstr(base + startIndex, str);
+            if (pos == NULL) result = -1;
+            else result = pos - base;
+        }
+        return result;
+    }
+    int lastIndexOf(const char* base, const char* str) {
+        int res = -1, result = -1;
+        int lenBase = strlen(base);
+        int lenStr  = strlen(str);
+        if(lenStr > lenBase) {return -1;} // str should not longer than base
+        for(int i=0; i<(lenBase - lenStr); i++){
+            res = indexOf(base, str, i);
+            if(res > result) result = res;
+        }
+        return result;
+    }
+
+    inline uint8_t  getDatamode(){return m_datamode;}
+    inline void     setDatamode(uint8_t dm){m_datamode=dm;}
     inline uint32_t streamavail() {if(m_ssl==false) return client.available(); else return clientsecure.available();}
-} ;
+};
 
 #endif

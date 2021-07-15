@@ -172,8 +172,8 @@ void VS1053::begin(){
     delay(10);
     await_data_request();
     m_endFillByte=wram_read(0x1E06) & 0xFF;
-//    sprintf(sbuf, "endFillByte is %X", endFillByte);
-//    if(vs1053_info) vs1053_info(sbuf);
+//    sprintf(chbuf, "endFillByte is %X", endFillByte);
+//    if(vs1053_info) vs1053_info(chbuf);
 //    printDetails("After last clocksetting \n");
     delay(100);
 }
@@ -233,8 +233,8 @@ void VS1053::stopSong()
         if((modereg & _BV(SM_CANCEL)) == 0)
                 {
             sdi_send_fillers(2052);
-            sprintf(sbuf, "Song stopped correctly after %d msec", i * 10);
-            if(vs1053_info) vs1053_info(sbuf);
+            sprintf(chbuf, "Song stopped correctly after %d msec", i * 10);
+            if(vs1053_info) vs1053_info(chbuf);
             return;
         }
         delay(10);
@@ -285,12 +285,12 @@ bool VS1053::printVersion(){
     if((reg1==0xFFFF)&&(reg2==0xFFFF)) flag=false; // all high?, seems not connected
     if((reg1==0x0000)&&(reg2==0x0000)) flag=false; // all low?,  not proper connected (no SCK?)
     if(flag==false){reg1=0; reg2=0;}
-    sprintf(sbuf, "chipID = %d%d", reg1, reg2);
-    if(vs1053_info) vs1053_info(sbuf);
+    sprintf(chbuf, "chipID = %d%d", reg1, reg2);
+    if(vs1053_info) vs1053_info(chbuf);
     reg1=wram_read(0x1E02) & 0xFF;
     if(reg1==0xFF) {reg1=0; flag=false;} // version too high
-    sprintf(sbuf, "version = %d", reg1);
-    if(vs1053_info) vs1053_info(sbuf);
+    sprintf(chbuf, "version = %d", reg1);
+    if(vs1053_info) vs1053_info(chbuf);
     return flag;
 }
 //---------------------------------------------------------------------------------------------------------------------
@@ -410,12 +410,12 @@ void VS1053::showstreamtitle(const char *ml, bool full){
         m_icystreamtitle="";                    // Unknown type
         return;                                 // Do not show
     }
-    if(pos1==-1 && pos4==-1){
+    if(pos1 == -1 && pos4 == -1){
         // Info probably from playlist
-        st=mline;
+        st = mline;
         if(vs1053_showstreamtitle) vs1053_showstreamtitle(st.c_str());
-        st="Streamtitle: " + st;
-        if(vs1053_info) vs1053_info(sbuf);
+        st = "Streamtitle: " + st;
+        if(vs1053_info) vs1053_info(st.c_str());
     }
 }
 //---------------------------------------------------------------------------------------------------------------------
@@ -449,15 +449,15 @@ void VS1053::handlebyte(uint8_t b){
                         m_ctseen=true;                          // Yes, remember seeing this
                         ct=m_metaline.substring(13);            // Set contentstype. Not used yet
                         ct.trim();
-                        sprintf(sbuf, "%s seen.", ct.c_str());
-                        if(vs1053_info) vs1053_info(sbuf);
+                        sprintf(chbuf, "%s seen.", ct.c_str());
+                        if(vs1053_info) vs1053_info(chbuf);
                     }
                     if(lcml.indexOf("ogg") >= 0){               // Is ct ogg?
                         m_ctseen=true;                          // Yes, remember seeing this
                         ct=m_metaline.substring(13);
                         ct.trim();
-                        sprintf(sbuf, "%s seen.", ct.c_str());
-                        if(vs1053_info) vs1053_info(sbuf);
+                        sprintf(chbuf, "%s seen.", ct.c_str());
+                        if(vs1053_info) vs1053_info(chbuf);
                         m_metaint=0;                            // ogg has no metadata
                         m_bitrate=0;
                         m_icyname=="";
@@ -467,14 +467,14 @@ void VS1053::handlebyte(uint8_t b){
                 else if(lcml.startsWith("location:")){
                     host=m_metaline.substring(lcml.indexOf("http"),lcml.length());// use metaline instead lcml
                     if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
-                    sprintf(sbuf, "redirect to new host %s", host.c_str());
-                    if(vs1053_info) vs1053_info(sbuf);
+                    sprintf(chbuf, "redirect to new host %s", host.c_str());
+                    if(vs1053_info) vs1053_info(chbuf);
                     connecttohost(host);
                 }
                 else if(lcml.startsWith("icy-br:")){
                     m_bitrate=m_metaline.substring(7).toInt();  // Found bitrate tag, read the bitrate
-                    sprintf(sbuf,"%d", m_bitrate);
-                    if(vs1053_bitrate) vs1053_bitrate(sbuf);
+                    sprintf(chbuf,"%d", m_bitrate);
+                    if(vs1053_bitrate) vs1053_bitrate(chbuf);
                 }
                 else if(lcml.startsWith("icy-metaint:")){
                     m_metaint=m_metaline.substring(12).toInt(); // Found metaint tag, read the value
@@ -484,8 +484,8 @@ void VS1053::handlebyte(uint8_t b){
                 else if(lcml.startsWith("icy-name:")){
                     m_icyname=m_metaline.substring(9);          // Get station name
                     m_icyname.trim();                           // Remove leading and trailing spaces
-                    sprintf(sbuf, "icy-name=%s", m_icyname.c_str());
-                    if(vs1053_info) vs1053_info(sbuf);
+                    sprintf(chbuf, "icy-name=%s", m_icyname.c_str());
+                    if(vs1053_info) vs1053_info(chbuf);
                     if(m_icyname!=""){
                         if(vs1053_showstation) vs1053_showstation(m_icyname.c_str());
                     }
@@ -506,8 +506,8 @@ void VS1053::handlebyte(uint8_t b){
                 }
                 else{
                     // all other
-                    sprintf(sbuf, "%s", m_metaline.c_str());
-                    if(vs1053_info) vs1053_info(sbuf);
+                    sprintf(chbuf, "%s", m_metaline.c_str());
+                    if(vs1053_info) vs1053_info(chbuf);
                 }
             }
             m_metaline="";                                      // Reset this line
@@ -516,8 +516,8 @@ void VS1053::handlebyte(uint8_t b){
                 if(m_bitrate==0){if(vs1053_bitrate) vs1053_bitrate("");} // no bitrate received
                 if(m_f_ogg==true){
                     m_datamode=VS1053_OGG;                      // Overwrite m_datamode
-                    sprintf(sbuf, "Switch to OGG, bitrate is %d, metaint is %d", m_bitrate, m_metaint); // Show bitrate and metaint
-                    if(vs1053_info) vs1053_info(sbuf);
+                    sprintf(chbuf, "Switch to OGG, bitrate is %d, metaint is %d", m_bitrate, m_metaint); // Show bitrate and metaint
+                    if(vs1053_info) vs1053_info(chbuf);
                     String lasthost=m_lastHost;
                     uint idx=lasthost.indexOf('?');
                     if(idx>0) lasthost=lasthost.substring(0, idx);
@@ -526,8 +526,8 @@ void VS1053::handlebyte(uint8_t b){
                 }
                 else{
                     m_datamode=VS1053_DATA;                         // Expecting data now
-                    sprintf(sbuf, "Switch to DATA, bitrate is %d, metaint is %d", m_bitrate, m_metaint); // Show bitrate and metaint
-                    if(vs1053_info) vs1053_info(sbuf);
+                    sprintf(chbuf, "Switch to DATA, bitrate is %d, metaint is %d", m_bitrate, m_metaint); // Show bitrate and metaint
+                    if(vs1053_info) vs1053_info(chbuf);
                     String lasthost=m_lastHost;
                     uint idx=lasthost.indexOf('?');
                     if(idx>0) lasthost=lasthost.substring(0, idx);
@@ -551,9 +551,9 @@ void VS1053::handlebyte(uint8_t b){
             m_firstmetabyte=false;                              // Not the first anymore
             m_metacount=b * 16 + 1;                             // New count for metadata including length byte
             if(m_metacount > 1){
-                sprintf(sbuf, "Metadata block %d bytes",        // Most of the time there are zero bytes of metadata
+                sprintf(chbuf, "Metadata block %d bytes",        // Most of the time there are zero bytes of metadata
                         m_metacount-1);
-                if(vs1053_info) vs1053_info(sbuf);
+                if(vs1053_info) vs1053_info(chbuf);
            }
             m_metaline="";                                      // Set to empty
         }
@@ -602,16 +602,16 @@ void VS1053::handlebyte(uint8_t b){
         else if(b == '\n')                                      // Linefeed ?
                 {
             m_LFcount++;                                        // Count linefeeds
-            sprintf(sbuf, "Playlistheader: %s", m_metaline.c_str());  // Show playlistheader
-            if(vs1053_info) vs1053_info(sbuf);
+            sprintf(chbuf, "Playlistheader: %s", m_metaline.c_str());  // Show playlistheader
+            if(vs1053_info) vs1053_info(chbuf);
             lcml=m_metaline;                                // Use lower case for compare
             lcml.toLowerCase();
             lcml.trim();
             if(lcml.startsWith("location:")){
                 host=m_metaline.substring(lcml.indexOf("http"),lcml.length());// use metaline instead lcml
                 if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
-                sprintf(sbuf, "redirect to new host %s", host.c_str());
-                if(vs1053_info) vs1053_info(sbuf);
+                sprintf(chbuf, "redirect to new host %s", host.c_str());
+                if(vs1053_info) vs1053_info(chbuf);
                 connecttohost(host);
             }
             m_metaline="";                                      // Ready for next line
@@ -637,8 +637,8 @@ void VS1053::handlebyte(uint8_t b){
                 { /* Yes, ignore */ }
 
         else if(b == '\n'){                                     // Linefeed or end of string?
-            sprintf(sbuf, "Playlistdata: %s", m_metaline.c_str());  // Show playlistdata
-            if(vs1053_info) vs1053_info(sbuf);
+            sprintf(chbuf, "Playlistdata: %s", m_metaline.c_str());  // Show playlistdata
+            if(vs1053_info) vs1053_info(chbuf);
             if(m_playlist.endsWith("m3u")){
                 if(m_metaline.length() < 5) {                   // Skip short lines
                     m_metaline="";                              // Flush line
@@ -658,8 +658,8 @@ void VS1053::handlebyte(uint8_t b){
                     return;}                                    // Ignore commentlines
                 // Now we have an URL for a .mp3 file or stream.  Is it the rigth one?
                 //if(metaline.indexOf("&")>0)metaline=host.substring(0,metaline.indexOf("&"));
-                sprintf(sbuf, "Entry %d in playlist found: %s", playlistcnt, m_metaline.c_str());
-                if(vs1053_info) vs1053_info(sbuf);
+                sprintf(chbuf, "Entry %d in playlist found: %s", playlistcnt, m_metaline.c_str());
+                if(vs1053_info) vs1053_info(chbuf);
                 if(m_metaline.indexOf("&")){
                     m_metaline=m_metaline.substring(0, m_metaline.indexOf("&"));}
                 if(m_playlist_num == playlistcnt){
@@ -689,8 +689,8 @@ void VS1053::handlebyte(uint8_t b){
                 if(m_metaline.startsWith("Title1")){
                     m_plsStationName=m_metaline.substring(7);
                     if(vs1053_showstation) vs1053_showstation(m_plsStationName.c_str());
-                    sprintf(sbuf, "StationName: %s", m_plsStationName.c_str());
-                    if(vs1053_info) vs1053_info(sbuf);
+                    sprintf(chbuf, "StationName: %s", m_plsStationName.c_str());
+                    if(vs1053_info) vs1053_info(chbuf);
                     m_f_plsTitle=true;
                 }
                 if(m_metaline.startsWith("Length1")) m_f_plsTitle=true; // if no Title is available
@@ -720,8 +720,8 @@ void VS1053::handlebyte(uint8_t b){
                         m_plsStationName=m_metaline.substring(7);
                         if(m_plsURL.indexOf('<')>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf('<')); // remove rest
                         if(vs1053_showstation) vs1053_showstation(m_plsStationName.c_str());
-                        sprintf(sbuf, "StationName: %s", m_plsStationName.c_str());
-                        if(vs1053_info) vs1053_info(sbuf);
+                        sprintf(chbuf, "StationName: %s", m_plsStationName.c_str());
+                        if(vs1053_info) vs1053_info(chbuf);
                         m_f_plsTitle=true;
                     }
                 }//entry
@@ -760,17 +760,17 @@ void VS1053::loop(){
 void VS1053::processLocalFile(){
     uint32_t av=0;                                          // available in stream (uin16_t is to small by playing from SD)
     uint16_t maxchunk=0x1000;                               // max number of bytes to read    
-    av=mp3file.available();                                 // Bytes left in file
+    av=audiofile.available();                                 // Bytes left in file
     if(av < maxchunk) maxchunk=av;                          // Reduce byte count for this mp3loop()
     if(maxchunk){                                           // Anything to read?
-        m_btp=mp3file.read(m_ringbuf, maxchunk);            // Read a block of data
+        m_btp=audiofile.read(m_ringbuf, maxchunk);            // Read a block of data
         sdi_send_buffer(m_ringbuf,m_btp);
     }
     if(av == 0){                                            // No more data from SD Card
-        mp3file.close();
+        audiofile.close();
         m_f_localfile=false;
-        sprintf(sbuf,"End of mp3file %s", m_mp3title.c_str());
-        if(vs1053_info) vs1053_info(sbuf);
+        sprintf(chbuf,"End of mp3file %s", m_mp3title.c_str());
+        if(vs1053_info) vs1053_info(chbuf);
         if(vs1053_eof_mp3) vs1053_eof_mp3(m_mp3title.c_str());
     }
 }
@@ -939,7 +939,7 @@ void VS1053::processWebStream(){
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::stop_mp3client(){
     int v=read_register(SCI_VOL);
-    mp3file.close();
+    audiofile.close();
     m_f_localfile=false;
     m_f_webstream=false;
     write_register(SCI_VOL, 0);  // Mute while stopping
@@ -970,8 +970,8 @@ bool VS1053::connecttohost(String host){
         m_f_stream_ready=false;
         m_lastHost=host;                                  // Remember the current host
     }
-    sprintf(sbuf, "Connect to new host: %s", host.c_str());
-    if(vs1053_info) vs1053_info(sbuf);
+    sprintf(chbuf, "Connect to new host: %s", host.c_str());
+    if(vs1053_info) vs1053_info(chbuf);
 
     // initializationsequence
     m_rcount=0;                                             // Empty ringbuff
@@ -1003,8 +1003,8 @@ bool VS1053::connecttohost(String host){
         if(m_playlist_num == 0){                            // First entry to play?
             m_playlist_num=1;                               // Yes, set index
         }
-        sprintf(sbuf, "Playlist request, entry %d", m_playlist_num); // Most of the time there are zero bytes of metadata
-        if(vs1053_info) vs1053_info(sbuf);
+        sprintf(chbuf, "Playlist request, entry %d", m_playlist_num); // Most of the time there are zero bytes of metadata
+        if(vs1053_info) vs1053_info(chbuf);
     }
 
     // In the URL there may be an extension, like noisefm.ru:8000/play.m3u&t=.m3u
@@ -1020,10 +1020,10 @@ bool VS1053::connecttohost(String host){
         port=host.substring(inx + 1).toInt();               // Get portnumber as integer
         hostwoext=host.substring(0, inx);                   // Host without portnumber
     }
-    sprintf(sbuf, "Connect to %s on port %d, extension %s",
+    sprintf(chbuf, "Connect to %s on port %d, extension %s",
             hostwoext.c_str(), port, extension.c_str());
-    if(vs1053_info) vs1053_info(sbuf);
-    if(vs1053_showstreaminfo) vs1053_showstreaminfo(sbuf);
+    if(vs1053_info) vs1053_info(chbuf);
+    if(vs1053_showstreaminfo) vs1053_showstreaminfo(chbuf);
 
     String resp=String("GET ") + extension +
                 String(" HTTP/1.1\r\n") +
@@ -1047,80 +1047,124 @@ bool VS1053::connecttohost(String host){
         }
     }
 
-    sprintf(sbuf, "Request %s failed!", host.c_str());
-    if(vs1053_info) vs1053_info(sbuf);
+    sprintf(chbuf, "Request %s failed!", host.c_str());
+    if(vs1053_info) vs1053_info(chbuf);
     if(vs1053_showstation) vs1053_showstation("");
     if(vs1053_showstreamtitle) vs1053_showstreamtitle("");
     if(vs1053_showstreaminfo) vs1053_showstreaminfo("");
     return false;
 }
 //---------------------------------------------------------------------------------------------------------------------
+void VS1053::UTF8toASCII(char* str){
+
+    const uint8_t ascii[60] = {
+    //129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148  // UTF8(C3)
+    //                Ä    Å    Æ    Ç         É                                       Ñ                  // CHAR
+      000, 000, 000, 142, 143, 146, 128, 000, 144, 000, 000, 000, 000, 000, 000, 000, 165, 000, 000, 000, // ASCII
+    //149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168
+    //      Ö                             Ü              ß    à                   ä    å    æ         è
+      000, 153, 000, 000, 000, 000, 000, 154, 000, 000, 225, 133, 000, 000, 000, 132, 134, 145, 000, 138,
+    //169, 170, 171, 172. 173. 174. 175, 176, 177, 179, 179, 180, 181, 182, 183, 184, 185, 186, 187, 188
+    //      ê    ë    ì         î    ï         ñ    ò         ô         ö              ù         û    ü
+      000, 136, 137, 141, 000, 140, 139, 000, 164, 149, 000, 147, 000, 148, 000, 000, 151, 000, 150, 129};
+
+    uint16_t i = 0, j=0, s = 0;
+    bool f_C3_seen = false;
+
+    while(str[i] != 0) {                                     // convert UTF8 to ASCII
+        if(str[i] == 195){                                   // C3
+            i++;
+            f_C3_seen = true;
+            continue;
+        }
+        str[j] = str[i];
+        if(str[j] > 128 && str[j] < 189 && f_C3_seen == true) {
+            s = ascii[str[j] - 129];
+            if(s != 0) str[j] = s;                         // found a related ASCII sign
+            f_C3_seen = false;
+        }
+        i++; j++;
+    }
+    str[j] = 0;
+}
+//---------------------------------------------------------------------------------------------------------------------
 bool VS1053::connecttoSD(String sdfile){
+    return connecttoFS(SD, sdfile.c_str());
+}
 
-    const uint8_t ascii[60]={
-          //196, 197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215,   ISO
-            142, 143, 146, 128, 000, 144, 000, 000, 000, 000, 000, 000, 000, 165, 000, 000, 000, 000, 153, 000, //ASCII
-          //216, 217, 218, 219, 220, 221, 222, 223, 224, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 235,   ISO
-            000, 000, 000, 000, 154, 000, 000, 225, 133, 000, 000, 000, 132, 143, 145, 135, 138, 130, 136, 137, //ASCII
-          //236, 237, 238, 239, 240, 241, 242, 243, 244, 245, 246, 247, 248, 249, 250, 251, 252, 253, 254, 255    ISO
-            000, 161, 140, 139, 000, 164, 000, 162, 147, 000, 148, 000, 000, 000, 163, 150, 129, 000, 000, 152};//ASCII
+bool VS1053::connecttoSD(const char* sdfile){
+    return connecttoFS(SD, sdfile);
+}
 
+bool VS1053::connecttoFS(fs::FS &fs, const char* path) {
 
-    uint16_t i=0, s=0;
+    if(strlen(path)>255) return false;
+
+    char audioName[256];
 
     stopSong();
     stop_mp3client();                           // Disconnect if still connected
     clientsecure.stop(); clientsecure.flush();  // release memory if allocated
     m_f_localfile=true;
     m_f_webstream=false;
-    if(!sdfile.startsWith("/")) sdfile="/"+sdfile;
-    while(sdfile[i] != 0){                      //convert UTF8 to ASCII
-        path[i]=sdfile[i];
-        if(path[i] > 195){
-            s=ascii[path[i]-196];
-            if(s!=0) path[i]=s;                 // found a related ASCII sign
-        } i++;
+
+    memcpy(audioName, path, strlen(path)+1);
+    if(audioName[0] != '/'){
+        for(int i = 255; i > 0; i--){
+            audioName[i] = audioName[i-1];
+        }
+        audioName[0] = '/';
     }
-    path[i]=0;
-    m_mp3title=sdfile.substring(sdfile.lastIndexOf('/') + 1, sdfile.length());
-    showstreamtitle(m_mp3title.c_str(), true);
-    sprintf(sbuf, "Reading file: %s", path);
-    if(vs1053_info) vs1053_info(sbuf);
-    fs::FS &fs=SD;
-    mp3file=fs.open(path);
-    if( !mp3file){
-        if(vs1053_info) vs1053_info("Failed to open file for reading");
+    if(endsWith(audioName, "\n")) audioName[strlen(audioName) -1] = 0;
+
+    sprintf(chbuf, "Reading file: \"%s\"", audioName);
+    if(vs1053_info) {vTaskDelay(2); vs1053_info(chbuf);}
+
+    if(fs.exists(audioName)) {
+        audiofile = fs.open(audioName);
+    } else {
+        UTF8toASCII(audioName);
+        if(fs.exists(audioName)) {
+            audiofile = fs.open(audioName);
+        }
+    }
+
+    if(!audiofile) {
+        if(vs1053_info) {vTaskDelay(2); vs1053_info("Failed to open file for reading");}
         return false;
     }
-    mp3file.readBytes(sbuf, 10);
-        if ((sbuf[0] != 'I') || (sbuf[1] != 'D') || (sbuf[2] != '3')) {
+    m_mp3title = audioName + lastIndexOf(audioName, "/") + 1;
+    showstreamtitle(m_mp3title.c_str(), true);
+
+    audiofile.readBytes(chbuf, 10);
+        if ((chbuf[0] != 'I') || (chbuf[1] != 'D') || (chbuf[2] != '3')) {
             if(vs1053_info) vs1053_info("file has no mp3 tag, skip metadata");
             setFilePos(0);
             return true;
         }
-        m_rev = sbuf[3];
+        m_rev = chbuf[3];
         switch (m_rev) {
         case 2:
-            m_f_unsync = (sbuf[5] & 0x80);
+            m_f_unsync = (chbuf[5] & 0x80);
             m_f_exthdr = false;
             break;
         case 3:
         case 4:
-            m_f_unsync = (sbuf[5] & 0x80); // bit7
-            m_f_exthdr = (sbuf[5] & 0x40); // bit6 extended header
+            m_f_unsync = (chbuf[5] & 0x80); // bit7
+            m_f_exthdr = (chbuf[5] & 0x40); // bit6 extended header
             break;
         };
 
-        m_id3Size  = sbuf[6]; m_id3Size = m_id3Size << 7;
-        m_id3Size |= sbuf[7]; m_id3Size = m_id3Size << 7;
-        m_id3Size |= sbuf[8]; m_id3Size = m_id3Size << 7;
-        m_id3Size |= sbuf[9];
+        m_id3Size  = chbuf[6]; m_id3Size = m_id3Size << 7;
+        m_id3Size |= chbuf[7]; m_id3Size = m_id3Size << 7;
+        m_id3Size |= chbuf[8]; m_id3Size = m_id3Size << 7;
+        m_id3Size |= chbuf[9];
 
         // Every read from now may be unsync'd
-        sprintf(sbuf, "ID3 version=%i", m_rev);
-        if(vs1053_info) vs1053_info(sbuf);
-        sprintf(sbuf,"ID3 framesSize=%i", m_id3Size);
-        if(vs1053_info) vs1053_info(sbuf);
+        sprintf(chbuf, "ID3 version = %i", m_rev);
+        if(vs1053_info) vs1053_info(chbuf);
+        sprintf(chbuf,"ID3 framesSize = %i", m_id3Size);
+        if(vs1053_info) vs1053_info(chbuf);
         readID3Metadata();
     return true;
 }
@@ -1180,50 +1224,50 @@ void VS1053::readID3Metadata(){
     String tag="";
     if (m_f_exthdr) {
         if(vs1053_info) vs1053_info("ID3 extended header");
-        int ehsz = (mp3file.read() << 24) | (mp3file.read() << 16)
-                | (mp3file.read() << 8) | (mp3file.read());
+        int ehsz = (audiofile.read() << 24) | (audiofile.read() << 16)
+                | (audiofile.read() << 8) | (audiofile.read());
         m_id3Size -= 4;
         for (int j = 0; j < ehsz - 4; j++) {
-            mp3file.read();
+            audiofile.read();
             m_id3Size--;
         } // Throw it away
     } else
         if(vs1053_info) vs1053_info("ID3 normal frames");
 
     do {
-        frameid[0] = mp3file.read();
-        frameid[1] = mp3file.read();
-        frameid[2] = mp3file.read();
+        frameid[0] = audiofile.read();
+        frameid[1] = audiofile.read();
+        frameid[2] = audiofile.read();
         m_id3Size -= 3;
         if   (m_rev == 2) frameid[3] = 0;
-        else {frameid[3] = mp3file.read(); m_id3Size--;}
+        else {frameid[3] = audiofile.read(); m_id3Size--;}
         frameid[4]=0; // terminate the string
         tag=frameid;
         if(frameid[0]==0 && frameid[1]==0 && frameid[2]==0 && frameid[3]==0){
             // We're in padding
-            while (m_id3Size != 0){mp3file.read(); m_id3Size--;}
+            while (m_id3Size != 0){audiofile.read(); m_id3Size--;}
         }
         else{
             if(m_rev==2){
-                framesize = (mp3file.read() << 16) | (mp3file.read() << 8) | (mp3file.read());
+                framesize = (audiofile.read() << 16) | (audiofile.read() << 8) | (audiofile.read());
                 m_id3Size -= 3;
                 compressed = false;
             }
             else{
-                framesize = (mp3file.read() << 24) | (mp3file.read() << 16) | (mp3file.read() << 8) | (mp3file.read());
+                framesize = (audiofile.read() << 24) | (audiofile.read() << 16) | (audiofile.read() << 8) | (audiofile.read());
                 m_id3Size -= 4;
-                mp3file.read(); // skip 1st flag
+                audiofile.read(); // skip 1st flag
                 m_id3Size--;
-                compressed = mp3file.read() & 0x80;
+                compressed = audiofile.read() & 0x80;
                 m_id3Size--;
             }
             if(compressed){
                 log_i("iscompressed");
-                int decompsize=(mp3file.read()<<24) | (mp3file.read()<<16) | (mp3file.read()<<8) | (mp3file.read());
+                int decompsize=(audiofile.read()<<24) | (audiofile.read()<<16) | (audiofile.read()<<8) | (audiofile.read());
                 m_id3Size -= 4;
                 (void) decompsize;
                 for (int j = 0; j < framesize; j++){
-                    mp3file.read();
+                    audiofile.read();
                     m_id3Size--;
                 }
             }
@@ -1231,10 +1275,10 @@ void VS1053::readID3Metadata(){
             uint32_t i=0; uint16_t j=0, k=0, m=0;
             bool isUnicode;
             if(framesize>0){
-                isUnicode = (mp3file.read() == 1) ? true : false;
+                isUnicode = (audiofile.read() == 1) ? true : false;
                 m_id3Size--;
                 if(framesize<256){
-                    mp3file.readBytes(value, framesize-1); m_id3Size-=framesize-1;
+                    audiofile.readBytes(value, framesize-1); m_id3Size-=framesize-1;
                     i=framesize-1; value[framesize-1]=0;
                 }
                 else{
@@ -1244,7 +1288,7 @@ void VS1053::readID3Metadata(){
                     }
                     else{
                         // store the first 255 bytes in buffer and cut the remains
-                        mp3file.readBytes(value, 255); m_id3Size-=255;
+                        audiofile.readBytes(value, 255); m_id3Size-=255;
                         value[255]=0; i=255;
                         // big block, skip it
                         setFilePos(getFilePos()+framesize-1-255); m_id3Size-=framesize-1;
@@ -1278,117 +1322,117 @@ void VS1053::readID3Metadata(){
                     }value[m]=0; i=m;
                 }
             }
-            sbuf[0]=0; j=0; k=0;
+            chbuf[0]=0; j=0; k=0;
             while(j<i){if(value[j]>0x19){value[k]=value[j]; k++;}else{i--;} j++;} //remove non printables
             value[i]=0; // new termination
             // Revision 2
-            if(tag=="CNT") sprintf(sbuf, "Play counter: %s", value);
-            if(tag=="COM") sprintf(sbuf, "Comments: %s", value);
-            if(tag=="CRA") sprintf(sbuf, "Audio encryption: %s", value);
-            if(tag=="CRM") sprintf(sbuf, "Encrypted meta frame: %s", value);
-            if(tag=="ETC") sprintf(sbuf, "Event timing codes: %s", value);
-            if(tag=="EQU") sprintf(sbuf, "Equalization: %s", value);
-            if(tag=="IPL") sprintf(sbuf, "Involved people list: %s", value);
-            if(tag=="PIC") sprintf(sbuf, "Attached picture: %s", value);
-            if(tag=="SLT") sprintf(sbuf, "Synchronized lyric/text: %s", value);
-            if(tag=="TAL") sprintf(sbuf, "Album/Movie/Show title: %s", value);
-            if(tag=="TBP") sprintf(sbuf, "BPM (Beats Per Minute): %s", value);
-            if(tag=="TCM") sprintf(sbuf, "Composer: %s", value);
-            if(tag=="TCO") sprintf(sbuf, "Content type: %s", value);
-            if(tag=="TCR") sprintf(sbuf, "Copyright message: %s", value);
-            if(tag=="TDA") sprintf(sbuf, "Date: %s", value);
-            if(tag=="TDY") sprintf(sbuf, "Playlist delay: %s", value);
-            if(tag=="TEN") sprintf(sbuf, "Encoded by: %s", value);
-            if(tag=="TFT") sprintf(sbuf, "File type: %s", value);
-            if(tag=="TIM") sprintf(sbuf, "Time: %s", value);
-            if(tag=="TKE") sprintf(sbuf, "Initial key: %s", value);
-            if(tag=="TLA") sprintf(sbuf, "Language(s): %s", value);
-            if(tag=="TLE") sprintf(sbuf, "Length: %s", value);
-            if(tag=="TMT") sprintf(sbuf, "Media type: %s", value);
-            if(tag=="TOA") sprintf(sbuf, "Original artist(s)/performer(s): %s", value);
-            if(tag=="TOF") sprintf(sbuf, "Original filename: %s", value);
-            if(tag=="TOL") sprintf(sbuf, "Original Lyricist(s)/text writer(s): %s", value);
-            if(tag=="TOR") sprintf(sbuf, "Original release year: %s", value);
-            if(tag=="TOT") sprintf(sbuf, "Original album/Movie/Show title: %s", value);
-            if(tag=="TP1") sprintf(sbuf, "Lead artist(s)/Lead performer(s)/Soloist(s)/Performing group: %s", value);
-            if(tag=="TP2") sprintf(sbuf, "Band/Orchestra/Accompaniment: %s", value);
-            if(tag=="TP3") sprintf(sbuf, "Conductor/Performer refinement: %s", value);
-            if(tag=="TP4") sprintf(sbuf, "Interpreted, remixed, or otherwise modified by: %s", value);
-            if(tag=="TPA") sprintf(sbuf, "Part of a set: %s", value);
-            if(tag=="TPB") sprintf(sbuf, "Publisher: %s", value);
-            if(tag=="TRC") sprintf(sbuf, "ISRC (International Standard Recording Code): %s", value);
-            if(tag=="TRD") sprintf(sbuf, "Recording dates: %s", value);
-            if(tag=="TRK") sprintf(sbuf, "Track number/Position in set: %s", value);
-            if(tag=="TSI") sprintf(sbuf, "Size: %s", value);
-            if(tag=="TSS") sprintf(sbuf, "Software/hardware and settings used for encoding: %s", value);
-            if(tag=="TT1") sprintf(sbuf, "Content group description: %s", value);
-            if(tag=="TT2") sprintf(sbuf, "Title/Songname/Content description: %s", value);
-            if(tag=="TT3") sprintf(sbuf, "Subtitle/Description refinement: %s", value);
-            if(tag=="TXT") sprintf(sbuf, "Lyricist/text writer: %s", value);
-            if(tag=="TXX") sprintf(sbuf, "User defined text information frame: %s", value);
-            if(tag=="TYE") sprintf(sbuf, "Year: %s", value);
-            if(tag=="UFI") sprintf(sbuf, "Unique file identifier: %s", value);
-            if(tag=="ULT") sprintf(sbuf, "Unsychronized lyric/text transcription: %s", value);
-            if(tag=="WAF") sprintf(sbuf, "Official audio file webpage: %s", value);
-            if(tag=="WAR") sprintf(sbuf, "Official artist/performer webpage: %s", value);
-            if(tag=="WAS") sprintf(sbuf, "Official audio source webpage: %s", value);
-            if(tag=="WCM") sprintf(sbuf, "Commercial information: %s", value);
-            if(tag=="WCP") sprintf(sbuf, "Copyright/Legal information: %s", value);
-            if(tag=="WPB") sprintf(sbuf, "Publishers official webpage: %s", value);
-            if(tag=="WXX") sprintf(sbuf, "User defined URL link frame: %s", value);
+            if(tag=="CNT") sprintf(chbuf, "Play counter: %s", value);
+            if(tag=="COM") sprintf(chbuf, "Comments: %s", value);
+            if(tag=="CRA") sprintf(chbuf, "Audio encryption: %s", value);
+            if(tag=="CRM") sprintf(chbuf, "Encrypted meta frame: %s", value);
+            if(tag=="ETC") sprintf(chbuf, "Event timing codes: %s", value);
+            if(tag=="EQU") sprintf(chbuf, "Equalization: %s", value);
+            if(tag=="IPL") sprintf(chbuf, "Involved people list: %s", value);
+            if(tag=="PIC") sprintf(chbuf, "Attached picture: %s", value);
+            if(tag=="SLT") sprintf(chbuf, "Synchronized lyric/text: %s", value);
+            if(tag=="TAL") sprintf(chbuf, "Album/Movie/Show title: %s", value);
+            if(tag=="TBP") sprintf(chbuf, "BPM (Beats Per Minute): %s", value);
+            if(tag=="TCM") sprintf(chbuf, "Composer: %s", value);
+            if(tag=="TCO") sprintf(chbuf, "Content type: %s", value);
+            if(tag=="TCR") sprintf(chbuf, "Copyright message: %s", value);
+            if(tag=="TDA") sprintf(chbuf, "Date: %s", value);
+            if(tag=="TDY") sprintf(chbuf, "Playlist delay: %s", value);
+            if(tag=="TEN") sprintf(chbuf, "Encoded by: %s", value);
+            if(tag=="TFT") sprintf(chbuf, "File type: %s", value);
+            if(tag=="TIM") sprintf(chbuf, "Time: %s", value);
+            if(tag=="TKE") sprintf(chbuf, "Initial key: %s", value);
+            if(tag=="TLA") sprintf(chbuf, "Language(s): %s", value);
+            if(tag=="TLE") sprintf(chbuf, "Length: %s", value);
+            if(tag=="TMT") sprintf(chbuf, "Media type: %s", value);
+            if(tag=="TOA") sprintf(chbuf, "Original artist(s)/performer(s): %s", value);
+            if(tag=="TOF") sprintf(chbuf, "Original filename: %s", value);
+            if(tag=="TOL") sprintf(chbuf, "Original Lyricist(s)/text writer(s): %s", value);
+            if(tag=="TOR") sprintf(chbuf, "Original release year: %s", value);
+            if(tag=="TOT") sprintf(chbuf, "Original album/Movie/Show title: %s", value);
+            if(tag=="TP1") sprintf(chbuf, "Lead artist(s)/Lead performer(s)/Soloist(s)/Performing group: %s", value);
+            if(tag=="TP2") sprintf(chbuf, "Band/Orchestra/Accompaniment: %s", value);
+            if(tag=="TP3") sprintf(chbuf, "Conductor/Performer refinement: %s", value);
+            if(tag=="TP4") sprintf(chbuf, "Interpreted, remixed, or otherwise modified by: %s", value);
+            if(tag=="TPA") sprintf(chbuf, "Part of a set: %s", value);
+            if(tag=="TPB") sprintf(chbuf, "Publisher: %s", value);
+            if(tag=="TRC") sprintf(chbuf, "ISRC (International Standard Recording Code): %s", value);
+            if(tag=="TRD") sprintf(chbuf, "Recording dates: %s", value);
+            if(tag=="TRK") sprintf(chbuf, "Track number/Position in set: %s", value);
+            if(tag=="TSI") sprintf(chbuf, "Size: %s", value);
+            if(tag=="TSS") sprintf(chbuf, "Software/hardware and settings used for encoding: %s", value);
+            if(tag=="TT1") sprintf(chbuf, "Content group description: %s", value);
+            if(tag=="TT2") sprintf(chbuf, "Title/Songname/Content description: %s", value);
+            if(tag=="TT3") sprintf(chbuf, "Subtitle/Description refinement: %s", value);
+            if(tag=="TXT") sprintf(chbuf, "Lyricist/text writer: %s", value);
+            if(tag=="TXX") sprintf(chbuf, "User defined text information frame: %s", value);
+            if(tag=="TYE") sprintf(chbuf, "Year: %s", value);
+            if(tag=="UFI") sprintf(chbuf, "Unique file identifier: %s", value);
+            if(tag=="ULT") sprintf(chbuf, "Unsychronized lyric/text transcription: %s", value);
+            if(tag=="WAF") sprintf(chbuf, "Official audio file webpage: %s", value);
+            if(tag=="WAR") sprintf(chbuf, "Official artist/performer webpage: %s", value);
+            if(tag=="WAS") sprintf(chbuf, "Official audio source webpage: %s", value);
+            if(tag=="WCM") sprintf(chbuf, "Commercial information: %s", value);
+            if(tag=="WCP") sprintf(chbuf, "Copyright/Legal information: %s", value);
+            if(tag=="WPB") sprintf(chbuf, "Publishers official webpage: %s", value);
+            if(tag=="WXX") sprintf(chbuf, "User defined URL link frame: %s", value);
             // Revision 3
-            if(tag=="COMM") sprintf(sbuf, "Comment: %s", value);
-            if(tag=="OWNE") sprintf(sbuf, "Ownership: %s", value);
-            if(tag=="PRIV") sprintf(sbuf, "Private: %s", value);
-            if(tag=="SYLT") sprintf(sbuf, "SynLyrics: %s", value);
-            if(tag=="TALB") sprintf(sbuf, "Album: %s", value);
-            if(tag=="TBPM") sprintf(sbuf, "BeatsPerMinute: %s", value);
-            if(tag=="TCMP") sprintf(sbuf, "Compilation: %s", value);
-            if(tag=="TCOM") sprintf(sbuf, "Composer: %s", value);
-            if(tag=="TCOP") sprintf(sbuf, "Copyright: %s", value);
-            if(tag=="TDAT") sprintf(sbuf, "Date: %s", value);
-            if(tag=="TEXT") sprintf(sbuf, "Lyricist: %s", value);
-            if(tag=="TIME") sprintf(sbuf, "Time: %s", value);
-            if(tag=="TIT1") sprintf(sbuf, "Grouping: %s", value);
-            if(tag=="TIT2") sprintf(sbuf, "Title: %s", value);
-            if(tag=="TIT3") sprintf(sbuf, "Subtitle: %s", value);
-            if(tag=="TLAN") sprintf(sbuf, "Language: %s", value);
-            if(tag=="TLEN") sprintf(sbuf, "Length: %s", value);
-            if(tag=="TMED") sprintf(sbuf, "Media: %s", value);
-            if(tag=="TOAL") sprintf(sbuf, "OriginalAlbum: %s", value);
-            if(tag=="TOPE") sprintf(sbuf, "OriginalArtist: %s", value);
-            if(tag=="TORY") sprintf(sbuf, "OriginalReleaseYear: %s", value);
-            if(tag=="TPE1") sprintf(sbuf, "Artist: %s", value);
-            if(tag=="TPE2") sprintf(sbuf, "Band: %s", value);
-            if(tag=="TPE3") sprintf(sbuf, "Conductor: %s", value);
-            if(tag=="TPE4") sprintf(sbuf, "InterpretedBy: %s", value);
-            if(tag=="TPOS") sprintf(sbuf, "PartOfSet: %s", value);
-            if(tag=="TPUB") sprintf(sbuf, "Publisher: %s", value);
-            if(tag=="TRCK") sprintf(sbuf, "Track: %s", value);
-            if(tag=="TRDA") sprintf(sbuf, "RecordingDates: %s", value);
-            if(tag=="TXXX") sprintf(sbuf, "UserDefinedText: %s", value);
-            if(tag=="TYER") sprintf(sbuf, "Year: %s", value);
-            if(tag=="USER") sprintf(sbuf, "TermsOfUse: %s", value);
-            if(tag=="USLT") sprintf(sbuf, "Lyrics: %s", value);
-            if(tag=="XDOR") sprintf(sbuf, "OriginalReleaseTime: %s", value);
-            if(sbuf[0]!=0) if(vs1053_id3data) vs1053_id3data(sbuf);
+            if(tag=="COMM") sprintf(chbuf, "Comment: %s", value);
+            if(tag=="OWNE") sprintf(chbuf, "Ownership: %s", value);
+            if(tag=="PRIV") sprintf(chbuf, "Private: %s", value);
+            if(tag=="SYLT") sprintf(chbuf, "SynLyrics: %s", value);
+            if(tag=="TALB") sprintf(chbuf, "Album: %s", value);
+            if(tag=="TBPM") sprintf(chbuf, "BeatsPerMinute: %s", value);
+            if(tag=="TCMP") sprintf(chbuf, "Compilation: %s", value);
+            if(tag=="TCOM") sprintf(chbuf, "Composer: %s", value);
+            if(tag=="TCOP") sprintf(chbuf, "Copyright: %s", value);
+            if(tag=="TDAT") sprintf(chbuf, "Date: %s", value);
+            if(tag=="TEXT") sprintf(chbuf, "Lyricist: %s", value);
+            if(tag=="TIME") sprintf(chbuf, "Time: %s", value);
+            if(tag=="TIT1") sprintf(chbuf, "Grouping: %s", value);
+            if(tag=="TIT2") sprintf(chbuf, "Title: %s", value);
+            if(tag=="TIT3") sprintf(chbuf, "Subtitle: %s", value);
+            if(tag=="TLAN") sprintf(chbuf, "Language: %s", value);
+            if(tag=="TLEN") sprintf(chbuf, "Length: %s", value);
+            if(tag=="TMED") sprintf(chbuf, "Media: %s", value);
+            if(tag=="TOAL") sprintf(chbuf, "OriginalAlbum: %s", value);
+            if(tag=="TOPE") sprintf(chbuf, "OriginalArtist: %s", value);
+            if(tag=="TORY") sprintf(chbuf, "OriginalReleaseYear: %s", value);
+            if(tag=="TPE1") sprintf(chbuf, "Artist: %s", value);
+            if(tag=="TPE2") sprintf(chbuf, "Band: %s", value);
+            if(tag=="TPE3") sprintf(chbuf, "Conductor: %s", value);
+            if(tag=="TPE4") sprintf(chbuf, "InterpretedBy: %s", value);
+            if(tag=="TPOS") sprintf(chbuf, "PartOfSet: %s", value);
+            if(tag=="TPUB") sprintf(chbuf, "Publisher: %s", value);
+            if(tag=="TRCK") sprintf(chbuf, "Track: %s", value);
+            if(tag=="TRDA") sprintf(chbuf, "RecordingDates: %s", value);
+            if(tag=="TXXX") sprintf(chbuf, "UserDefinedText: %s", value);
+            if(tag=="TYER") sprintf(chbuf, "Year: %s", value);
+            if(tag=="USER") sprintf(chbuf, "TermsOfUse: %s", value);
+            if(tag=="USLT") sprintf(chbuf, "Lyrics: %s", value);
+            if(tag=="XDOR") sprintf(chbuf, "OriginalReleaseTime: %s", value);
+            if(chbuf[0]!=0) if(vs1053_id3data) vs1053_id3data(chbuf);
         }
     } while (m_id3Size > 0);
 }
 //---------------------------------------------------------------------------------------------------------------------
 uint32_t VS1053::getFileSize(){
-    if (!mp3file) return 0;
-    return mp3file.size();
+    if (!audiofile) return 0;
+    return audiofile.size();
 }
 //---------------------------------------------------------------------------------------------------------------------
 uint32_t VS1053::getFilePos(){
-    if (!mp3file) return 0;
-    return mp3file.position();
+    if (!audiofile) return 0;
+    return audiofile.position();
 }
 //---------------------------------------------------------------------------------------------------------------------
 bool VS1053::setFilePos(uint32_t pos){
-    if (!mp3file) return false;
-    return mp3file.seek(pos);
+    if (!audiofile) return false;
+    return audiofile.seek(pos);
 }
 //---------------------------------------------------------------------------------------------------------------------
 String VS1053::urlencode(String str)
