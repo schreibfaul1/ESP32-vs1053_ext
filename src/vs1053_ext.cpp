@@ -185,9 +185,10 @@ void VS1053::setVolume(uint8_t vol){
     uint16_t value;                                      // Value to send to SCI_VOL
 
     if(vol > 21) vol=21;
-    vol=volumetable[vol];
+
     if(vol != curvol){
-        curvol=vol;                                      // Save for later use
+        curvol = vol;                                    // #20       
+        vol=volumetable[vol];                            // Save for later use
         value=map(vol, 0, 100, 0xF8, 0x00);              // 0..100% to one channel
         value=(value << 8) | value;
         write_register(SCI_VOL, value);                  // Volume left and right
