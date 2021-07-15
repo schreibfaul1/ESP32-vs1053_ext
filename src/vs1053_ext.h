@@ -128,13 +128,13 @@ private:
     const char volumetable[22]={   0,50,60,65,70,75,80,82,84,86,
                                   88,90,91,92,93,94,95,96,97,98,99,100}; //22 elements
 protected:
-    inline void DCS_HIGH() {GPIO.out_w1ts = (1 << dcs_pin);}
-    inline void DCS_LOW()  {GPIO.out_w1tc = (1 << dcs_pin);}
-    inline void CS_HIGH()  {GPIO.out_w1ts = (1 << cs_pin);}
-    inline void CS_LOW()   {GPIO.out_w1tc = (1 << cs_pin);}
-    inline void await_data_request() const{
-        while(!digitalRead(dreq_pin)){ NOP();}                                  	// Very short delay
-    }
+    inline void DCS_HIGH() {(dcs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << (dcs_pin - 32) : GPIO.out_w1ts = 1 << dcs_pin;}
+	inline void DCS_LOW()  {(dcs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << (dcs_pin - 32) : GPIO.out_w1tc = 1 << dcs_pin;}
+	inline void CS_HIGH()  {( cs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << ( cs_pin - 32) : GPIO.out_w1ts = 1 <<  cs_pin;}
+    inline void CS_LOW()   {( cs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << ( cs_pin - 32) : GPIO.out_w1tc = 1 <<  cs_pin;}
+    inline void await_data_request() {while(!digitalRead(dreq_pin)) NOP();}	  // Very short delay
+    inline bool data_request()     {return(digitalRead(dreq_pin) == HIGH);}
+	
     void     control_mode_on();
     void     control_mode_off();
     void     data_mode_on();
@@ -159,7 +159,7 @@ protected:
     void     processWebStream();
     void     UTF8toASCII(char* str);
 
-    inline bool data_request(){return(digitalRead(dreq_pin) == HIGH);}
+    
 
 
 public:
@@ -176,10 +176,10 @@ public:
     void     printDetails();                            // Print configuration details to serial output.
     bool     printVersion();                            // Print ID and version of vs1053 chip
     void     softReset() ;                              // Do a soft reset
-    void 	   loop();
+    void 	 loop();
     uint16_t ringused();
     bool     connecttohost(String host);
-    bool	   connecttoSD(String sdfile);
+    bool	 connecttoSD(String sdfile);
     bool     connecttoSD(const char* sdfile);
     bool     connecttoFS(fs::FS &fs, const char* path);
     bool     connecttospeech(String speech, String lang);

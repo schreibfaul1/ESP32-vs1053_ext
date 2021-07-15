@@ -11,7 +11,7 @@
 VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin) :
         cs_pin(_cs_pin), dcs_pin(_dcs_pin), dreq_pin(_dreq_pin)
 {
-    clientsecure.setInsecure();  // if that can't be resolved update to ESP32 Arduino version 1.0.5-rc05 or higher
+    clientsecure.setInsecure();                 // update to ESP32 Arduino version 1.0.5-rc05 or higher
     m_endFillByte=0;
     curvol=50;
     m_t0=0;
@@ -49,11 +49,11 @@ uint16_t VS1053::read_register(uint8_t _reg)
 {
     uint16_t result=0;
     control_mode_on();
-    SPI.write(3);                                // Read operation
-    SPI.write(_reg);                             // Register to write (0..0xF)
+    SPI.write(3);                                           // Read operation
+    SPI.write(_reg);                                        // Register to write (0..0xF)
     // Note: transfer16 does not seem to work
     result=(SPI.transfer(0xFF) << 8) | (SPI.transfer(0xFF));  // Read 16 bits data
-    await_data_request();                        // Wait for DREQ to be HIGH again
+    await_data_request();                                   // Wait for DREQ to be HIGH again
     control_mode_off();
     return result;
 }
@@ -61,19 +61,19 @@ uint16_t VS1053::read_register(uint8_t _reg)
 void VS1053::write_register(uint8_t _reg, uint16_t _value)
 {
     control_mode_on();
-    SPI.write(2);                                // Write operation
-    SPI.write(_reg);                             // Register to write (0..0xF)
-    SPI.write16(_value);                         // Send 16 bits data
+    SPI.write(2);                                           // Write operation
+    SPI.write(_reg);                                        // Register to write (0..0xF)
+    SPI.write16(_value);                                    // Send 16 bits data
     await_data_request();
     control_mode_off();
 }
 //---------------------------------------------------------------------------------------------------------------------
 size_t VS1053::sendBytes(uint8_t* data, size_t len){
-    size_t chunk_length = 0;                         // Length of chunk 32 byte or shorter
+    size_t chunk_length = 0;                                // Length of chunk 32 byte or shorter
     size_t bytesDecoded = 0;
 
     data_mode_on();
-    while(len){                                  // More to do?
+    while(len){                                             // More to do?
         if(!digitalRead(dreq_pin)) break;
         chunk_length = len;
         if(len > vs1053_chunk_size){
@@ -90,12 +90,12 @@ size_t VS1053::sendBytes(uint8_t* data, size_t len){
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::sdi_send_buffer(uint8_t* data, size_t len)
 {
-    size_t chunk_length;                         // Length of chunk 32 byte or shorter
+    size_t chunk_length;                                    // Length of chunk 32 byte or shorter
 
     data_mode_on();
-    while(len){                                  // More to do?
+    while(len){                                             // More to do?
 
-        await_data_request();                    // Wait for space available
+        await_data_request();                               // Wait for space available
         chunk_length=len;
         if(len > vs1053_chunk_size){
             chunk_length=vs1053_chunk_size;
@@ -109,12 +109,12 @@ void VS1053::sdi_send_buffer(uint8_t* data, size_t len)
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::sdi_send_fillers(size_t len){
 
-    size_t chunk_length;                         // Length of chunk 32 byte or shorter
+    size_t chunk_length;                                    // Length of chunk 32 byte or shorter
 
     data_mode_on();
-    while(len)                                   // More to do?
+    while(len)                                              // More to do?
     {
-        await_data_request();                    // Wait for space available
+        await_data_request();                               // Wait for space available
         chunk_length=len;
         if(len > vs1053_chunk_size){
             chunk_length=vs1053_chunk_size;
@@ -135,17 +135,17 @@ void VS1053::wram_write(uint16_t address, uint16_t data){
 //---------------------------------------------------------------------------------------------------------------------
 uint16_t VS1053::wram_read(uint16_t address){
 
-    write_register(SCI_WRAMADDR, address);       // Start reading from WRAM
-    return read_register(SCI_WRAM);              // Read back result
+    write_register(SCI_WRAMADDR, address);                  // Start reading from WRAM
+    return read_register(SCI_WRAM);                         // Read back result
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::begin(){
 
-    pinMode(dreq_pin, INPUT);                          // DREQ is an input
-    pinMode(cs_pin, OUTPUT);                           // The SCI and SDI signals
+    pinMode(dreq_pin, INPUT);                               // DREQ is an input
+    pinMode(cs_pin, OUTPUT);                                // The SCI and SDI signals
     pinMode(dcs_pin, OUTPUT);
-    digitalWrite(dcs_pin, HIGH);                       // Start HIGH for SCI en SDI
-    digitalWrite(cs_pin, HIGH);
+    DCS_HIGH();
+    CS_HIGH();
     delay(100);
 
     // Init SPI in slow mode (0.2 MHz)
@@ -156,15 +156,15 @@ void VS1053::begin(){
     //testComm("Slow SPI,Testing VS1053 read/write registers... \n");
     // Most VS1053 modules will start up in midi mode.  The result is that there is no audio
     // when playing MP3.  You can modify the board, but there is a more elegant way:
-    wram_write(0xC017, 3);                             // GPIO DDR=3
-    wram_write(0xC019, 0);                             // GPIO ODATA=0
+    wram_write(0xC017, 3);                                  // GPIO DDR=3
+    wram_write(0xC019, 0);                                  // GPIO ODATA=0
     delay(100);
     //printDetails ("After test loop");
-    softReset();                                       // Do a soft reset
+    softReset();                                            // Do a soft reset
     // Switch on the analog parts
-    write_register(SCI_AUDATA, 44100 + 1);             // 44.1kHz + stereo
+    write_register(SCI_AUDATA, 44100 + 1);                  // 44.1kHz + stereo
     // The next clocksetting allows SPI clocking at 5 MHz, 4 MHz is safe then.
-    write_register(SCI_CLOCKF, 6 << 12);               // Normal clock settings multiplyer 3.0=12.2 MHz
+    write_register(SCI_CLOCKF, 6 << 12);                    // Normal clock settings multiplyer 3.0=12.2 MHz
     //SPI Clock to 4 MHz. Now you can set high speed SPI clock.
     VS1053_SPI=SPISettings(4000000, MSBFIRST, SPI_MODE0);
     write_register(SCI_MODE, _BV (SM_SDINEW) | _BV(SM_LINE1));
@@ -182,33 +182,33 @@ void VS1053::setVolume(uint8_t vol){
     // Set volume.  Both left and right.
     // Input value is 0..21.  21 is the loudest.
     // Clicking reduced by using 0xf8 to 0x00 as limits.
-    uint16_t value;                                      // Value to send to SCI_VOL
+    uint16_t value;                                         // Value to send to SCI_VOL
 
     if(vol > 21) vol=21;
 
     if(vol != curvol){
-        curvol = vol;                                    // #20       
-        vol=volumetable[vol];                            // Save for later use
-        value=map(vol, 0, 100, 0xF8, 0x00);              // 0..100% to one channel
+        curvol = vol;                                       // #20       
+        vol=volumetable[vol];                               // Save for later use
+        value=map(vol, 0, 100, 0xF8, 0x00);                 // 0..100% to one channel
         value=(value << 8) | value;
-        write_register(SCI_VOL, value);                  // Volume left and right
+        write_register(SCI_VOL, value);                     // Volume left and right
     }
 }
 //---------------------------------------------------------------------------------------------------------------------
-void VS1053::setTone(uint8_t *rtone){                    // Set bass/treble (4 nibbles)
+void VS1053::setTone(uint8_t *rtone){                       // Set bass/treble (4 nibbles)
 
     // Set tone characteristics.  See documentation for the 4 nibbles.
-    uint16_t value=0;                                    // Value to send to SCI_BASS
-    int i;                                               // Loop control
+    uint16_t value=0;                                       // Value to send to SCI_BASS
+    int i;                                                  // Loop control
 
     for(i=0; i < 4; i++)
             {
-        value=(value << 4) | rtone[i];                   // Shift next nibble in
+        value=(value << 4) | rtone[i];                      // Shift next nibble in
     }
-    write_register(SCI_BASS, value);                     // Volume left and right
+    write_register(SCI_BASS, value);                        // Volume left and right
 }
 //---------------------------------------------------------------------------------------------------------------------
-uint8_t VS1053::getVolume()                              // Get the currenet volume setting.
+uint8_t VS1053::getVolume()                                 // Get the currenet volume setting.
 {
     return curvol;
 }
@@ -220,8 +220,8 @@ void VS1053::startSong()
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::stopSong()
 {
-    uint16_t modereg;                     // Read from mode register
-    int i;                                // Loop control
+    uint16_t modereg;                                       // Read from mode register
+    int i;                                                  // Loop control
 
     sdi_send_fillers(2052);
     delay(10);
