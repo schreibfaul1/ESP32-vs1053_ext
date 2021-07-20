@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jul 15 2021
+ *  Updated on: Jul 20 2021
  *      Author: Wolle
  */
 
@@ -10,6 +10,7 @@
 #define _vs1053_ext
 
 #include "Arduino.h"
+#include "base64.h"
 #include "SPI.h"
 #include "SD.h"
 #include "SD_MMC.h"
@@ -31,20 +32,18 @@ extern __attribute__((weak)) void vs1053_commercial(const char*);
 extern __attribute__((weak)) void vs1053_icyurl(const char*);
 extern __attribute__((weak)) void vs1053_lasthost(const char*);
 
-#define VS1053_HEADER          2    //const for datamode
-#define VS1053_DATA            4
-#define VS1053_METADATA        8
-#define VS1053_PLAYLISTINIT   16
-#define VS1053_PLAYLISTHEADER 32
-#define VS1053_PLAYLISTDATA   64
-#define VS1053_OGG           128
-
 class VS1053{
 
 private:
     WiFiClient client;
     WiFiClientSecure clientsecure;
     File audiofile;
+
+
+private:
+    enum : int { VS1053_NONE, VS1053_HEADER , VS1053_DATA, VS1053_METADATA, VS1053_PLAYLISTINIT,
+                 VS1053_PLAYLISTHEADER,  VS1053_PLAYLISTDATA, VS1053_SWM, VS1053_OGG};
+    enum : int { FORMAT_NONE = 0, FORMAT_M3U = 1, FORMAT_PLS = 2, FORMAT_ASX = 3};
 
 private:
     uint8_t       cs_pin ;                        	// Pin where CS line is connected
@@ -83,20 +82,21 @@ private:
     char path[256];
 
     uint8_t  m_ringbuf[0x5000]; // 20480d           // Ringbuffer for mp3 stream
+    char     m_line[512];                           // stores plsLine or metaLine
+    char     m_lastHost[256];                       // Store the last URL to a webstream
     uint8_t  m_rev=0;                               // Revision
+    uint8_t  m_playlistFormat = 0;                  // M3U, PLS, ASX
     const uint16_t m_ringbfsiz=sizeof(m_ringbuf);   // Ringbuffer size
     uint16_t m_rbwindex=0;                          // Ringbuffer writeindex
     uint16_t m_rbrindex=0;                          // Ringbuffer readindex
     uint16_t m_ringspace=0;                         // Ringbuffer free space
     uint16_t m_rcount=0;                            // Ringbuffer used space
     int             m_id3Size=0;                    // length id3 tag
-    boolean         m_ssl=false;
-    uint32_t        m_t0;                           // Keep alive, end a playlist
+    bool            m_f_ssl=false;
     uint8_t         m_endFillByte ;                 // Byte to send when stopping song
     uint16_t        m_datamode=0;                   // Statemaschine
     String          m_metaline ;                    // Readable line in metadata
     String          m_mp3title;                     // Name of the mp3 file
-    String          m_lastHost="";                  // Store the last URL to a webstream
     String          m_icyurl="";                    // Store ie icy-url if received
     String          m_st_remember="";               // Save the last streamtitle
     bool            m_chunked = false ;             // Station provides chunked transfer
@@ -107,24 +107,18 @@ private:
     uint32_t        m_metaint = 0;                  // Number of databytes between metadata
     int             m_bitrate = 0;                  // Bitrate in kb/sec
     int16_t         m_btp=0;                        // Bytes to play
-    uint32_t        m_totalcount = 0;               // Counter mp3 data
     int             m_metacount=0;                  // Number of bytes in metadata
     String          m_icyname ;                     // Icecast station name
     String          m_icystreamtitle ;              // Streamtitle from metadata
-    String          m_playlist ;                    // The URL of the specified playlist
-    int8_t          m_playlist_num = 0 ;            // Nonzero for selection from playlist
-    boolean         m_firstmetabyte=false;          // True if first metabyte (counter)
-    boolean         m_f_hostreq = false ;           // Request for new host
-    boolean         m_f_localfile = false ;         // Play from local mp3-file
-    boolean         m_f_webstream = false ;         // Play from URL
-    boolean         m_f_plsFile=false;              // Set if URL is known
-    boolean         m_f_plsTitle=false;             // Set if StationName is knowm
-    boolean         m_f_ogg=false;                  // Set if oggstream
-    boolean         m_f_stream_ready=false;         // Set after connecttohost and first streamdata are available
-    boolean         m_f_unsync = false;
-    boolean         m_f_exthdr = false;             // ID3 extended header
-    String          m_plsURL;
-    String          m_plsStationName;
+    bool            m_firstmetabyte=false;          // True if first metabyte (counter)
+    bool            m_f_running = false;
+    bool            m_f_localfile = false ;         // Play from local mp3-file
+    bool            m_f_webstream = false ;         // Play from URL
+    bool            m_f_ogg=false;                  // Set if oggstream
+    bool            m_f_stream_ready=false;         // Set after connecttohost and first streamdata are available
+    bool            m_f_unsync = false;
+    bool            m_f_exthdr = false;             // ID3 extended header
+
     const char volumetable[22]={   0,50,60,65,70,75,80,82,84,86,
                                   88,90,91,92,93,94,95,96,97,98,99,100}; //22 elements
 protected:
@@ -157,7 +151,9 @@ protected:
     void     readID3Metadata();
     void     processLocalFile();
     void     processWebStream();
+    void     processPlayListData();
     void     UTF8toASCII(char* str);
+    void     setDefaults();
 
     
 
@@ -179,6 +175,7 @@ public:
     void 	 loop();
     uint16_t ringused();
     bool     connecttohost(String host);
+    bool     connecttohost(const char* host, const char* user = "", const char* pwd = "");
     bool	 connecttoSD(String sdfile);
     bool     connecttoSD(const char* sdfile);
     bool     connecttoFS(fs::FS &fs, const char* path);
@@ -219,7 +216,7 @@ public:
 
     inline uint8_t  getDatamode(){return m_datamode;}
     inline void     setDatamode(uint8_t dm){m_datamode=dm;}
-    inline uint32_t streamavail() {if(m_ssl==false) return client.available(); else return clientsecure.available();}
+    inline uint32_t streamavail() {if(m_f_ssl==false) return client.available(); else return clientsecure.available();}
 };
 
 #endif

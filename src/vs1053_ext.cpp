@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jul 15 2021
+ *  Updated on: Jul 20 2021
  *      Author: Wolle
  */
 
@@ -14,7 +14,6 @@ VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin) :
     clientsecure.setInsecure();                 // update to ESP32 Arduino version 1.0.5-rc05 or higher
     m_endFillByte=0;
     curvol=50;
-    m_t0=0;
     m_LFcount=0;
 }
 VS1053::~VS1053(){
@@ -420,13 +419,10 @@ void VS1053::showstreamtitle(const char *ml, bool full){
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::handlebyte(uint8_t b){
-    static uint16_t playlistcnt;                                // Counter to find right entry in playlist
     String lcml;                                                // Lower case metaline
     static String ct;                                           // Contents type
     static String host;
-    int inx;                                                    // Pointer in metaline
-    static boolean f_entry=false;                               // entryflag for asx playlist
-
+ 
     if(m_datamode == VS1053_HEADER)                             // Handle next byte of MP3 header
     {
 
@@ -580,165 +576,7 @@ void VS1053::handlebyte(uint8_t b){
             m_datamode=VS1053_DATA;                             // Expecting data
         }
     }
-    if(m_datamode == VS1053_PLAYLISTINIT)                       // Initialize for receive .m3u file
-    {
-        // We are going to use metadata to read the lines from the .m3u file
-        // Sometimes this will only contain a single line
-        f_entry=false;                                          // no entry found yet (asx playlist)
-        m_metaline="";                                          // Prepare for new line
-        m_LFcount=0;                                            // For detection end of header
-        m_datamode=VS1053_PLAYLISTHEADER;                       // Handle playlist data
-        playlistcnt=1;                                          // Reset for compare
-        m_totalcount=0;                                         // Reset totalcount
-        if(vs1053_info) vs1053_info("Read from playlist");
-    }
-    if(m_datamode == VS1053_PLAYLISTHEADER){                    // Read header
-        if((b > 0x7F) ||                                        // Ignore unprintable characters
-                (b == '\r') ||                                  // Ignore CR
-                (b == '\0'))                                    // Ignore NULL
-                {
-            // Yes, ignore
-        }
-        else if(b == '\n')                                      // Linefeed ?
-                {
-            m_LFcount++;                                        // Count linefeeds
-            sprintf(chbuf, "Playlistheader: %s", m_metaline.c_str());  // Show playlistheader
-            if(vs1053_info) vs1053_info(chbuf);
-            lcml=m_metaline;                                // Use lower case for compare
-            lcml.toLowerCase();
-            lcml.trim();
-            if(lcml.startsWith("location:")){
-                host=m_metaline.substring(lcml.indexOf("http"),lcml.length());// use metaline instead lcml
-                if(host.indexOf("&")>0)host=host.substring(0,host.indexOf("&")); // remove parameter
-                sprintf(chbuf, "redirect to new host %s", host.c_str());
-                if(vs1053_info) vs1053_info(chbuf);
-                connecttohost(host);
-            }
-            m_metaline="";                                      // Ready for next line
-            if(m_LFcount == 2)
-                    {
-                if(vs1053_info) vs1053_info("Switch to PLAYLISTDATA");
-                m_datamode=VS1053_PLAYLISTDATA;                 // Expecting data now
-                return;
-            }
-        }
-        else
-        {
-            m_metaline+=(char)b;                                // Normal character, put new char in metaline
-            m_LFcount=0;                                        // Reset double CRLF detection
-        }
-    }
-    if(m_datamode == VS1053_PLAYLISTDATA)                       // Read next byte of .m3u file data
-    {
-        m_t0=millis();
-        if((b > 0x7F) ||                                        // Ignore unprintable characters
-                (b == '\r') ||                                  // Ignore CR
-                (b == '\0'))                                    // Ignore NULL
-                { /* Yes, ignore */ }
-
-        else if(b == '\n'){                                     // Linefeed or end of string?
-            sprintf(chbuf, "Playlistdata: %s", m_metaline.c_str());  // Show playlistdata
-            if(vs1053_info) vs1053_info(chbuf);
-            if(m_playlist.endsWith("m3u")){
-                if(m_metaline.length() < 5) {                   // Skip short lines
-                    m_metaline="";                              // Flush line
-                    return;}
-                if(m_metaline.indexOf("#EXTINF:") >= 0){        // Info?
-                    if(m_playlist_num == playlistcnt){          // Info for this entry?
-                        inx=m_metaline.indexOf(",");            // Comma in this line?
-                        if(inx > 0){
-                            // Show artist and title if present in metadata
-                            //if(vs1053_showstation) vs1053_showstation(m_metaline.substring(inx + 1).c_str());
-                            if(vs1053_info) vs1053_info(m_metaline.substring(inx + 1).c_str());
-                        }
-                    }
-                }
-                if(m_metaline.startsWith("#")){                 // Commentline?
-                    m_metaline="";
-                    return;}                                    // Ignore commentlines
-                // Now we have an URL for a .mp3 file or stream.  Is it the rigth one?
-                //if(metaline.indexOf("&")>0)metaline=host.substring(0,metaline.indexOf("&"));
-                sprintf(chbuf, "Entry %d in playlist found: %s", playlistcnt, m_metaline.c_str());
-                if(vs1053_info) vs1053_info(chbuf);
-                if(m_metaline.indexOf("&")){
-                    m_metaline=m_metaline.substring(0, m_metaline.indexOf("&"));}
-                if(m_playlist_num == playlistcnt){
-                    inx=m_metaline.indexOf("http://");          // Search for "http://"
-                    if(inx >= 0){                               // Does URL contain "http://"?
-                        host=m_metaline.substring(inx + 7);}    // Yes, remove it and set host
-                    else{
-                        host=m_metaline;}                       // Yes, set new host
-                    //log_i("connecttohost %s", host.c_str());
-                    connecttohost(host);                        // Connect to it
-                }
-                m_metaline="";
-                host=m_playlist;                                // Back to the .m3u host
-                playlistcnt++;                                  // Next entry in playlist
-            } //m3u
-            if(m_playlist.endsWith("pls")){
-                if(m_metaline.startsWith("File1")){
-                    inx=m_metaline.indexOf("http://");          // Search for "http://"
-                    if(inx >= 0){                               // Does URL contain "http://"?
-                        m_plsURL=m_metaline.substring(inx + 7); // Yes, remove it
-                        if(m_plsURL.indexOf("&")>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf("&")); // remove parameter
-                        // Now we have an URL for a .mp3 file or stream in host.
-
-                        m_f_plsFile=true;
-                    }
-                }
-                if(m_metaline.startsWith("Title1")){
-                    m_plsStationName=m_metaline.substring(7);
-                    if(vs1053_showstation) vs1053_showstation(m_plsStationName.c_str());
-                    sprintf(chbuf, "StationName: %s", m_plsStationName.c_str());
-                    if(vs1053_info) vs1053_info(chbuf);
-                    m_f_plsTitle=true;
-                }
-                if(m_metaline.startsWith("Length1")) m_f_plsTitle=true; // if no Title is available
-                if((m_f_plsFile==true)&&(m_metaline.length()==0)) m_f_plsTitle=true;
-                m_metaline="";
-                if(m_f_plsFile && m_f_plsTitle){    //we have both StationName and StationURL
-                    m_f_plsFile=false; m_f_plsTitle=false;
-                    //log_i("connecttohost %s", m_plsURL.c_str());
-                    connecttohost(m_plsURL);        // Connect to it
-                }
-            }//pls
-            if(m_playlist.endsWith("asx")){
-                String ml=m_metaline;
-                ml.toLowerCase();                               // use lowercases
-                if(ml.indexOf("<entry>")>=0) f_entry=true;      // found entry tag (returns -1 if not found)
-                if(f_entry){
-                    if(ml.indexOf("ref href")>0){
-                        inx=ml.indexOf("http://");
-                        if(inx>0){
-                            m_plsURL=m_metaline.substring(inx + 7); // Yes, remove it
-                            if(m_plsURL.indexOf('"')>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf('"')); // remove rest
-                            // Now we have an URL for a stream in host.
-                            m_f_plsFile=true;
-                        }
-                    }
-                    if(ml.indexOf("<title>")>=0){
-                        m_plsStationName=m_metaline.substring(7);
-                        if(m_plsURL.indexOf('<')>0)m_plsURL=m_plsURL.substring(0,m_plsURL.indexOf('<')); // remove rest
-                        if(vs1053_showstation) vs1053_showstation(m_plsStationName.c_str());
-                        sprintf(chbuf, "StationName: %s", m_plsStationName.c_str());
-                        if(vs1053_info) vs1053_info(chbuf);
-                        m_f_plsTitle=true;
-                    }
-                }//entry
-                m_metaline="";
-                if(m_f_plsFile && m_f_plsTitle){   //we have both StationName and StationURL
-                    m_f_plsFile=false; m_f_plsTitle=false;
-                    //log_i("connecttohost %s", host.c_str());
-                    connecttohost(m_plsURL);        // Connect to it
-                }
-            }//asx
-        }
-        else
-        {
-            m_metaline+=(char)b;                            // Normal character, add it to metaline
-        }
-        return;
-    }
+    return;
 }
 //---------------------------------------------------------------------------------------------------------------------
 uint16_t VS1053::ringused(){
@@ -752,6 +590,11 @@ void VS1053::loop(){
     }
     // - webstream - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_webstream) {                                      // Playing file from URL?
+        //if(!m_f_running) return;
+        if(m_datamode == VS1053_PLAYLISTINIT || m_datamode == VS1053_PLAYLISTHEADER || m_datamode == VS1053_PLAYLISTDATA){
+            processPlayListData();
+            return;
+        }
         processWebStream();
     }
     return;
@@ -786,25 +629,19 @@ void VS1053::processWebStream(){
     static uint32_t count=0;                                // Bytecounter between metadata
     static uint16_t rcount=0;                               // max bytes handover to the player
     static uint32_t chunksize=0;                            // Chunkcount read from stream
-    if(m_ssl==false) av=client.available();// Available from stream
-    if(m_ssl==true)  av=clientsecure.available();// Available from stream
+    if(m_f_ssl==false) av=client.available();               // Available from stream
+    if(m_f_ssl==true)  av=clientsecure.available();         // Available from stream
     if(av){
         m_ringspace=m_ringbfsiz - m_rcount;
-        part=m_ringbfsiz - m_rbwindex;                  // Part of length to xfer
+        part=m_ringbfsiz - m_rbwindex;                      // Part of length to xfer
         if(part>m_ringspace)part=m_ringspace;
-        if(m_ssl==false) res=client.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
-        if(m_ssl==true)  res=clientsecure.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
+        if(m_f_ssl==false) res=client.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
+        if(m_f_ssl==true)  res=clientsecure.read(m_ringbuf+ m_rbwindex, part);   // Copy first part
         if(res>0){
             m_rcount+=res;
             m_rbwindex+=res;
         }
         if(m_rbwindex==m_ringbfsiz) m_rbwindex=0;
-    }
-    if(m_datamode == VS1053_PLAYLISTDATA){
-        if(m_t0+49<millis()) {
-            //log_i("terminate metaline after 50ms");     // if mo data comes from host
-            handlebyte('\n');                           // send LF
-        }
     }
     if(m_chunked==false){rcount=m_rcount;}
     else{
@@ -937,42 +774,206 @@ void VS1053::processWebStream(){
     }
 }
 //---------------------------------------------------------------------------------------------------------------------
+void VS1053::processPlayListData() {
+
+    int av = 0;
+    if(!m_f_ssl) av=client.available();
+    else         av= clientsecure.available();
+    if(av < 1) return;
+
+    char pl[256]; // playlistline
+    uint8_t b = 0;
+    int16_t pos = 0;
+
+    static bool f_entry = false;                            // entryflag for asx playlist
+    static bool f_title = false;                            // titleflag for asx playlist
+    static bool f_ref   = false;                            // refflag   for asx playlist
+
+    while(true){
+        if(!m_f_ssl)  b = client.read();
+        else          b = clientsecure.read();
+        if(b == 0xff) b = '\n'; // no more to read? send new line
+        if(b == '\n') {pl[pos] = 0; break;}
+        if(b < 0x20 || b > 0x7E) continue;
+        pl[pos] = b;
+        pos++;
+        if(pos == 255){pl[pos] = '\0'; log_e("headerline oberflow"); break;}
+    }
+
+    if(strlen(pl) == 0 && m_datamode == VS1053_PLAYLISTHEADER) {
+        if(vs1053_info) vs1053_info("Switch to PLAYLISTDATA");
+        m_datamode = VS1053_PLAYLISTDATA;                    // Expecting data now
+        return;
+    }
+
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if(m_datamode == VS1053_PLAYLISTINIT) {                  // Initialize for receive .m3u file
+        // We are going to use metadata to read the lines from the .m3u file
+        // Sometimes this will only contain a single line
+        f_entry = false;
+        f_title = false;
+        f_ref   = false;
+        m_datamode = VS1053_PLAYLISTHEADER;                  // Handle playlist data
+        if(vs1053_info) vs1053_info("Read from playlist");
+    } // end AUDIO_PLAYLISTINIT
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if(m_datamode == VS1053_PLAYLISTHEADER) {                // Read header
+
+        sprintf(chbuf, "Playlistheader: %s", pl);           // Show playlistheader
+        if(vs1053_info) vs1053_info(chbuf);
+
+        int pos = indexOf(pl, "404 Not Found", 0);
+        if(pos >= 0) {
+            m_datamode = VS1053_NONE;
+            if(vs1053_info) vs1053_info("Error 404 Not Found");
+            stopSong();
+            return;
+        }
+
+        pos = indexOf(pl, "404 File Not Found", 0);
+        if(pos >= 0) {
+            m_datamode = VS1053_NONE;
+            if(vs1053_info) vs1053_info("Error 404 File Not Found");
+            stopSong();
+            return;
+        }
+
+        pos = indexOf(pl, ":", 0);                          // lowercase all letters up to the colon
+        if(pos >= 0) {
+            for(int i=0; i<pos; i++) {
+                pl[i] = toLowerCase(pl[i]);
+            }
+        }
+        if(startsWith(pl, "location:")) {
+            const char* host;
+            pos = indexOf(pl, "http", 0);
+            host = (pl + pos);
+            sprintf(chbuf, "redirect to new host %s", host);
+            if(vs1053_info) vs1053_info(chbuf);
+            connecttohost(host);
+        }
+        return;
+    } // end AUDIO_PLAYLISTHEADER
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if(m_datamode == VS1053_PLAYLISTDATA) {                  // Read next byte of .m3u file data
+        sprintf(chbuf, "Playlistdata: %s", pl);             // Show playlistdata
+        if(vs1053_info) vs1053_info(chbuf);
+
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        if(m_playlistFormat == FORMAT_M3U) {
+
+            if(indexOf(pl, "#EXTINF:", 0) >= 0) {           // Info?
+               pos = indexOf(pl, ",", 0);                   // Comma in this line?
+               if(pos > 0) {
+                   // Show artist and title if present in metadata
+                   if(vs1053_info) vs1053_info(pl + pos + 1);
+               }
+               return;
+           }
+           if(startsWith(pl, "#")) {                        // Commentline?
+               return;
+           }
+
+           pos = indexOf(pl, "http://:@", 0); // ":@"??  remove that!
+           if(pos >= 0) {
+               sprintf(chbuf, "Entry in playlist found: %s", (pl + pos + 9));
+               connecttohost(pl + pos + 9);
+               return;
+           }
+           sprintf(chbuf, "Entry in playlist found: %s", pl);
+           if(vs1053_info) vs1053_info(chbuf);
+           pos = indexOf(pl, "http", 0);                    // Search for "http"
+           const char* host;
+           if(pos >= 0) {                                   // Does URL contain "http://"?
+               host = (pl + pos);
+               connecttohost(host);
+           }                                                // Yes, set new host
+           return;
+        } //m3u
+
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        if(m_playlistFormat == FORMAT_PLS) {
+            if(startsWith(pl, "File1")) {
+                pos = indexOf(pl, "http", 0);                   // File1=http://streamplus30.leonex.de:14840/;
+                if(pos >= 0) {                                  // yes, URL contains "http"?
+                    memcpy(m_line, pl + pos, strlen(pl) + 1);   // http://streamplus30.leonex.de:14840/;
+                    // Now we have an URL for a stream in host.
+                    f_ref = true;
+                }
+            }
+            if(startsWith(pl, "Title1")) {                      // Title1=Antenne Tirol
+                const char* plsStationName = (pl + 7);
+                if(vs1053_showstation) vs1053_showstation(plsStationName);
+                sprintf(chbuf, "StationName: \"%s\"", plsStationName);
+                if(vs1053_info) vs1053_info(chbuf);
+                f_title = true;
+            }
+            if(startsWith(pl, "Length1")) f_title = true;               // if no Title is available
+            if((f_ref == true) && (strlen(pl) == 0)) f_title = true;
+
+            if(f_ref && f_title) {                                      // we have both StationName and StationURL
+                log_i("connect to new host %s", m_line);
+                connecttohost(m_line);                                  // Connect to it
+            }
+            return;
+        } // pls
+
+        // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        if(m_playlistFormat == FORMAT_ASX) { // Advanced Stream Redirector
+            if(indexOf(pl, "<entry>", 0) >= 0) f_entry = true; // found entry tag (returns -1 if not found)
+            if(f_entry) {
+                if(indexOf(pl, "ref href", 0) > 0) {           // <ref href="http://87.98.217.63:24112/stream" />
+                    pos = indexOf(pl, "http", 0);
+                    if(pos > 0) {
+                        char* plsURL = (pl + pos);             // http://87.98.217.63:24112/stream" />
+                        int pos1 = indexOf(plsURL, "\"", 0);   // http://87.98.217.63:24112/stream
+                        if(pos1 > 0) {
+                            plsURL[pos1] = 0;
+                        }
+                        memcpy(m_line, plsURL, strlen(plsURL));   // save url in array
+                        log_i("m_plsURL = %s",pl);
+                        // Now we have an URL for a stream in host.
+                        f_ref = true;
+                    }
+                }
+                pos = indexOf(pl, "<title>", 0);
+                if(pos < 0) pos = indexOf(pl, "<Title>", 0);
+                if(pos >= 0) {
+                    char* plsStationName = (pl + pos + 7);          // remove <Title>
+                    pos = indexOf(plsStationName, "</", 0);
+                    if(pos >= 0){
+                            *(plsStationName +pos) = 0;             // remove </Title>
+                    }
+                    if(vs1053_showstation) vs1053_showstation(plsStationName);
+                    sprintf(chbuf, "StationName: \"%s\"", plsStationName);
+                    if(vs1053_info) vs1053_info(chbuf);
+                    f_title = true;
+                }
+            } //entry
+            if(f_ref && f_title) {   //we have both StationName and StationURL
+                connecttohost(m_line);                              // Connect to it
+            }
+        }  //asx
+        return;
+    } // end AUDIO_PLAYLISTDATA
+}
+//---------------------------------------------------------------------------------------------------------------------
 void VS1053::stop_mp3client(){
     int v=read_register(SCI_VOL);
     audiofile.close();
     m_f_localfile=false;
     m_f_webstream=false;
     write_register(SCI_VOL, 0);  // Mute while stopping
-//    while(client.connected())
-//    {
-//        if(vs1053_info) vs1053_info("Stopping client"); // Stop connection to host
-//        client.flush();
-//        client.stop();
-//        delay(500);
-//    }
+
     client.flush();                                       // Flush stream client
     client.stop();                                        // Stop stream client
     write_register(SCI_VOL, v);
 }
 //---------------------------------------------------------------------------------------------------------------------
-bool VS1053::connecttohost(String host){
-
-    int inx;                                              // Position of ":" in hostname
-    int port=80;                                          // Port number for host
-    String extension="/";                                 // May be like "/mp3" in "skonto.ls.lv:8002/mp3"
-    String hostwoext;                                     // Host without extension and portnumber
-    String headerdata="";
-    stopSong();
-    stop_mp3client();                                     // Disconnect if still connected
-    m_f_localfile=false;
-    m_f_webstream=true;
-    if(m_lastHost!=host){                                 // New host or reconnection?
-        m_f_stream_ready=false;
-        m_lastHost=host;                                  // Remember the current host
-    }
-    sprintf(chbuf, "Connect to new host: %s", host.c_str());
-    if(vs1053_info) vs1053_info(chbuf);
-
+void VS1053::setDefaults(){
     // initializationsequence
     m_rcount=0;                                             // Empty ringbuff
     m_rbrindex=0;
@@ -981,77 +982,127 @@ bool VS1053::connecttohost(String host){
     m_metaint=0;                                            // No metaint yet
     m_LFcount=0;                                            // For detection end of header
     m_bitrate=0;                                            // Bitrate still unknown
-    m_totalcount=0;                                         // Reset totalcount
+//    m_totalcount=0;                                         // Reset totalcount
     m_metaline="";                                          // No metadata yet
     m_icyname="";                                           // No StationName yet
     m_st_remember="";                                       // Delete the last streamtitle
     m_bitrate=0;                                            // No bitrate yet
     m_firstchunk=true;                                      // First chunk expected
     m_chunked=false;                                        // Assume not chunked
-    m_ssl=false;
-    setDatamode(VS1053_HEADER);                             // Handle header
+    m_f_ssl=false;
+}
+//---------------------------------------------------------------------------------------------------------------------
+bool VS1053::connecttohost(String host){
+    return connecttohost(host.c_str());
+}
+//---------------------------------------------------------------------------------------------------------------------
+bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) {
+    // user and pwd for authentification only, can be empty
 
-    if(host.startsWith("http://")) {host=host.substring(7); m_ssl=false;}
-    if(host.startsWith("https://")){host=host.substring(8); m_ssl=true; port=443;}
-    clientsecure.stop(); clientsecure.flush(); // release memory
-
-    if(host.endsWith(".m3u")||
-            host.endsWith(".pls")||
-                 host.endsWith("asx")){                     // Is it an m3u or pls or asx playlist?
-        m_playlist=host;                                    // Save copy of playlist URL
-        m_datamode=VS1053_PLAYLISTINIT;                     // Yes, start in PLAYLIST mode
-        if(m_playlist_num == 0){                            // First entry to play?
-            m_playlist_num=1;                               // Yes, set index
-        }
-        sprintf(chbuf, "Playlist request, entry %d", m_playlist_num); // Most of the time there are zero bytes of metadata
-        if(vs1053_info) vs1053_info(chbuf);
+    if(strlen(host) == 0) {
+        if(vs1053_info) vs1053_info("Hostaddress is empty");
+        return false;
     }
+    setDefaults();
+
+    sprintf(chbuf, "Connect to new host: \"%s\"", host);
+    if(vs1053_info) vs1053_info(chbuf);
+
+    // authentification
+    String toEncode = String(user) + ":" + String(pwd);
+    String authorization = base64::encode(toEncode);
+
+    // initializationsequence
+    int16_t pos_colon;                                        // Position of ":" in hostname
+    int16_t pos_ampersand;                                    // Position of "&" in hostname
+    uint16_t port = 80;                                       // Port number for host
+    String extension = "/";                                   // May be like "/mp3" in "skonto.ls.lv:8002/mp3"
+    String hostwoext = "";                                    // Host without extension and portnumber
+    String headerdata = "";
+    m_f_webstream = true;
+    setDatamode(VS1053_HEADER);                                // Handle header
+
+    if(startsWith(host, "http://")) {
+        host = host + 7;
+        m_f_ssl = false;
+    }
+
+    if(startsWith(host, "https://")) {
+        host = host +8;
+        m_f_ssl = true;
+        port = 443;
+    }
+
+    String s_host = host;
+    s_host.trim();
+
+    // Is it a playlist?
+    if(s_host.endsWith(".m3u")) {m_playlistFormat = FORMAT_M3U; m_datamode = VS1053_PLAYLISTINIT;}
+    if(s_host.endsWith(".pls")) {m_playlistFormat = FORMAT_PLS; m_datamode = VS1053_PLAYLISTINIT;}
+    if(s_host.endsWith(".asx")) {m_playlistFormat = FORMAT_ASX; m_datamode = VS1053_PLAYLISTINIT;}
 
     // In the URL there may be an extension, like noisefm.ru:8000/play.m3u&t=.m3u
-    inx=host.indexOf("/");                                  // Search for begin of extension
-    if(inx > 0){                                            // Is there an extension?
-        extension=host.substring(inx);                      // Yes, change the default
-        hostwoext=host.substring(0, inx);                   // Host without extension
-
+    pos_colon = s_host.indexOf("/");                                  // Search for begin of extension
+    if(pos_colon > 0) {                                               // Is there an extension?
+        extension = s_host.substring(pos_colon);                      // Yes, change the default
+        hostwoext = s_host.substring(0, pos_colon);                   // Host without extension
     }
     // In the URL there may be a portnumber
-    inx=host.indexOf(":");                                  // Search for separator
-    if(inx >= 0){                                           // Portnumber available?
-        port=host.substring(inx + 1).toInt();               // Get portnumber as integer
-        hostwoext=host.substring(0, inx);                   // Host without portnumber
+    pos_colon = s_host.indexOf(":");                                  // Search for separator
+    pos_ampersand = s_host.indexOf("&");                              // Search for additional extensions
+    if(pos_colon >= 0) {                                              // Portnumber available?
+        if((pos_ampersand == -1) or (pos_ampersand > pos_colon)) {    // Portnumber is valid if ':' comes before '&' #82
+            port = s_host.substring(pos_colon + 1).toInt();           // Get portnumber as integer
+            hostwoext = s_host.substring(0, pos_colon);               // Host without portnumber
+        }
     }
-    sprintf(chbuf, "Connect to %s on port %d, extension %s",
-            hostwoext.c_str(), port, extension.c_str());
+    sprintf(chbuf, "Connect to \"%s\" on port %d, extension \"%s\"", hostwoext.c_str(), port, extension.c_str());
     if(vs1053_info) vs1053_info(chbuf);
-    if(vs1053_showstreaminfo) vs1053_showstreaminfo(chbuf);
 
-    String resp=String("GET ") + extension +
-                String(" HTTP/1.1\r\n") +
-                String("Host: ") + hostwoext +
-                String("\r\n") +
-                String("Icy-MetaData:1\r\n") +
-                String("Connection: close\r\n\r\n");
+    extension.replace(" ", "%20");
 
-    if(m_ssl==false){
-        if(client.connect(hostwoext.c_str(), port)){
-            if(vs1053_info) vs1053_info("Connected to server");
+    String resp = String("GET ") + extension + String(" HTTP/1.1\r\n")
+                + String("Host: ") + hostwoext + String("\r\n")
+                + String("Icy-MetaData:1\r\n")
+                + String("Authorization: Basic " + authorization + "\r\n")
+                + String("Connection: close\r\n\r\n");
+
+    const uint32_t TIMEOUT_MS{250};
+    if(m_f_ssl == false) {
+        uint32_t t = millis();
+        if(client.connect(hostwoext.c_str(), port, TIMEOUT_MS)) {
+            client.setNoDelay(true);
             client.print(resp);
-            return true;
-        }
-    }
-    if(m_ssl==true){
-        if(clientsecure.connect(hostwoext.c_str(), port)){
-            if(vs1053_info) vs1053_info("SSL/TLS Connected to server");
-            clientsecure.print(resp);
+            uint32_t dt = millis() - t;
+            sprintf(chbuf, "Connected to server in %u ms", dt);
+            if(vs1053_info) vs1053_info(chbuf);
+
+            memcpy(m_lastHost, s_host.c_str(), s_host.length()+1);               // Remember the current s_host
+            m_f_running = true;
             return true;
         }
     }
 
-    sprintf(chbuf, "Request %s failed!", host.c_str());
+    const uint32_t TIMEOUT_MS_SSL{2500};
+    if(m_f_ssl == true) {
+        uint32_t t = millis();
+        if(clientsecure.connect(hostwoext.c_str(), port, TIMEOUT_MS_SSL)) {
+            clientsecure.setNoDelay(true);
+            // if(audio_info) audio_info("SSL/TLS Connected to server");
+            clientsecure.print(resp);
+            uint32_t dt = millis() - t;
+            sprintf(chbuf, "SSL has been established in %u ms, free Heap: %u bytes", dt, ESP.getFreeHeap());
+            if(vs1053_info) vs1053_info(chbuf);
+            memcpy(m_lastHost, s_host.c_str(), s_host.length()+1);               // Remember the current s_host
+            m_f_running = true;
+            return true;
+        }
+    }
+    sprintf(chbuf, "Request %s failed!", s_host.c_str());
     if(vs1053_info) vs1053_info(chbuf);
     if(vs1053_showstation) vs1053_showstation("");
     if(vs1053_showstreamtitle) vs1053_showstreamtitle("");
-    if(vs1053_showstreaminfo) vs1053_showstreaminfo("");
+    m_lastHost[0] = 0;
     return false;
 }
 //---------------------------------------------------------------------------------------------------------------------
@@ -1174,7 +1225,7 @@ bool VS1053::connecttospeech(String speech, String lang){
     String path="/translate_tts";
     m_f_localfile=false;
     m_f_webstream=false;
-    m_ssl=true;
+    m_f_ssl=true;
 
     stopSong();
     stop_mp3client();                           // Disconnect if still connected
