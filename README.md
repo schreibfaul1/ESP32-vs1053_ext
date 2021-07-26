@@ -12,6 +12,7 @@ vs1053_showstation &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; the name of the connected 
 vs1053_info &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; additional information for debugging<br>
 vs1053_bitrate &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; this is the bitrate of the set station<br>
 vs1053_eof_mp3 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; mp3 player reaches the end of file<br>
+vs1053_eof_stream  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; end of web file<br>
 vs1053_commercial  &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; is there a commercial at the begin, show the duration in seconds<br>
 vs1053_icyurl &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; if the station have a homepage, show the URL<br>
 vs1053_lasthost &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; contains the really connected URL (originally may be changed by redirection)
