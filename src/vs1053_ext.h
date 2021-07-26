@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jul 20 2021
+ *  Updated on: Jul 26 2021
  *      Author: Wolle
  */
 
@@ -20,19 +20,89 @@
 #include "WiFiClient.h"
 #include "WiFiClientSecure.h"
 
+#include "vs1053b-patches-flac.h"
+
 extern __attribute__((weak)) void vs1053_info(const char*);
 extern __attribute__((weak)) void vs1053_showstreamtitle(const char*);
 extern __attribute__((weak)) void vs1053_showstation(const char*);
 extern __attribute__((weak)) void vs1053_showstreaminfo(const char*);
 extern __attribute__((weak)) void vs1053_id3data(const char*); //ID3 metadata
+extern __attribute__((weak)) void vs1053_id3image(File& file, const size_t pos, const size_t size); //ID3 metadata image
 extern __attribute__((weak)) void vs1053_eof_mp3(const char*);
 extern __attribute__((weak)) void vs1053_eof_speech(const char*);
 extern __attribute__((weak)) void vs1053_bitrate(const char*);
 extern __attribute__((weak)) void vs1053_commercial(const char*);
 extern __attribute__((weak)) void vs1053_icyurl(const char*);
 extern __attribute__((weak)) void vs1053_lasthost(const char*);
+extern __attribute__((weak)) void vs1053_eof_stream(const char*); // The webstream comes to an end
 
-class VS1053{
+//----------------------------------------------------------------------------------------------------------------------
+
+class AudioBuffer {
+// AudioBuffer will be allocated in PSRAM, If PSRAM not available or has not enough space AudioBuffer will be
+// allocated in FlashRAM with reduced size
+//
+//  m_buffer            m_readPtr                 m_writePtr                 m_endPtr
+//   |                       |<------dataLength------->|<------ writeSpace ----->|
+//   ▼                       ▼                         ▼                         ▼
+//   ---------------------------------------------------------------------------------------------------------------
+//   |                     <--m_buffSize-->                                      |      <--m_resBuffSize -->     |
+//   ---------------------------------------------------------------------------------------------------------------
+//   |<-----freeSpace------->|                         |<------freeSpace-------->|
+//
+//
+//
+//   if the space between m_readPtr and buffend < m_resBuffSize copy data from the beginning to resBuff
+//   so that the mp3/aac/flac frame is always completed
+//
+//  m_buffer                      m_writePtr                 m_readPtr        m_endPtr
+//   |                                 |<-------writeSpace------>|<--dataLength-->|
+//   ▼                                 ▼                         ▼                ▼
+//   ---------------------------------------------------------------------------------------------------------------
+//   |                        <--m_buffSize-->                                    |      <--m_resBuffSize -->     |
+//   ---------------------------------------------------------------------------------------------------------------
+//   |<---  ------dataLength--  ------>|<-------freeSpace------->|
+//
+//
+
+public:
+    AudioBuffer(size_t maxBlockSize = 0);       // constructor
+    ~AudioBuffer();                             // frees the buffer
+    size_t   init();                            // set default values
+    void     changeMaxBlockSize(uint16_t mbs);  // is default 1600 for mp3 and aac, set 16384 for FLAC
+    uint16_t getMaxBlockSize();                 // returns maxBlockSize
+    size_t   freeSpace();                       // number of free bytes to overwrite
+    size_t   writeSpace();                      // space fom writepointer to bufferend
+    size_t   bufferFilled();                    // returns the number of filled bytes
+    void     bytesWritten(size_t bw);           // update writepointer
+    void     bytesWasRead(size_t br);           // update readpointer
+    uint8_t* getWritePtr();                     // returns the current writepointer
+    uint8_t* getReadPtr();                      // returns the current readpointer
+    uint32_t getWritePos();                     // write position relative to the beginning
+    uint32_t getReadPos();                      // read position relative to the beginning
+    void     resetBuffer();                     // restore defaults
+
+protected:
+    const size_t m_buffSizePSRAM    = 300000;   // most webstreams limit the advance to 100...300Kbytes
+    const size_t m_buffSizeRAM      = 1600 * 10;
+    size_t       m_buffSize         = 0;
+    size_t       m_freeSpace        = 0;
+    size_t       m_writeSpace       = 0;
+    size_t       m_dataLength       = 0;
+    size_t       m_resBuffSizeRAM   = 4096;     // reserved buffspace, >= one mp3  frame
+    size_t       m_resBuffSizePSRAM = 4096;
+    size_t       m_maxBlockSize     = 1600;
+    uint8_t*     m_buffer           = NULL;
+    uint8_t*     m_writePtr         = NULL;
+    uint8_t*     m_readPtr          = NULL;
+    uint8_t*     m_endPtr           = NULL;
+    bool         m_f_start          = true;
+};
+//----------------------------------------------------------------------------------------------------------------------
+
+class VS1053 : private AudioBuffer{
+
+    AudioBuffer InBuff; // instance of input buffer
 
 private:
     WiFiClient client;
@@ -44,6 +114,9 @@ private:
     enum : int { VS1053_NONE, VS1053_HEADER , VS1053_DATA, VS1053_METADATA, VS1053_PLAYLISTINIT,
                  VS1053_PLAYLISTHEADER,  VS1053_PLAYLISTDATA, VS1053_SWM, VS1053_OGG};
     enum : int { FORMAT_NONE = 0, FORMAT_M3U = 1, FORMAT_PLS = 2, FORMAT_ASX = 3};
+
+    enum : int { CODEC_NONE, CODEC_WAV, CODEC_MP3, CODEC_AAC, CODEC_M4A, CODEC_FLAC, CODEC_OGG,
+                 CODEC_OGG_FLAC, CODEC_OGG_OPUS};
 
 private:
     uint8_t       cs_pin ;                        	// Pin where CS line is connected
@@ -78,19 +151,14 @@ private:
 
     SPISettings     VS1053_SPI;                     // SPI settings for this slave
 
-    char chbuf[256];
-    char path[256];
-
-    uint8_t  m_ringbuf[0x5000]; // 20480d           // Ringbuffer for mp3 stream
-    char     m_line[512];                           // stores plsLine or metaLine
-    char     m_lastHost[256];                       // Store the last URL to a webstream
-    uint8_t  m_rev=0;                               // Revision
-    uint8_t  m_playlistFormat = 0;                  // M3U, PLS, ASX
-    const uint16_t m_ringbfsiz=sizeof(m_ringbuf);   // Ringbuffer size
-    uint16_t m_rbwindex=0;                          // Ringbuffer writeindex
-    uint16_t m_rbrindex=0;                          // Ringbuffer readindex
-    uint16_t m_ringspace=0;                         // Ringbuffer free space
-    uint16_t m_rcount=0;                            // Ringbuffer used space
+    char            chbuf[512];
+    char            m_lastHost[256];                // Store the last URL to a webstream
+    uint8_t         m_codec = CODEC_NONE;           //
+    uint8_t         m_rev=0;                        // Revision
+    uint8_t         m_playlistFormat = 0;           // M3U, PLS, ASX
+    size_t          m_file_size = 0;                // size of the file
+    size_t          m_audioDataSize = 0;            //
+    uint32_t        m_audioDataStart = 0;           // in bytes
     int             m_id3Size=0;                    // length id3 tag
     bool            m_f_ssl=false;
     uint8_t         m_endFillByte ;                 // Byte to send when stopping song
@@ -99,15 +167,21 @@ private:
     String          m_mp3title;                     // Name of the mp3 file
     String          m_icyurl="";                    // Store ie icy-url if received
     String          m_st_remember="";               // Save the last streamtitle
-    bool            m_chunked = false ;             // Station provides chunked transfer
-    bool            m_ctseen=false;                 // First line of header seen or not
-    bool            m_firstchunk=true;              // First chunk as input
+    bool            m_f_chunked = false ;           // Station provides chunked transfer
+    bool            m_f_ctseen=false;               // First line of header seen or not
+    bool            m_f_firstchunk=true;            // First chunk as input
+    bool            m_f_swm = true;                 // Stream without metadata
+    bool            m_f_webfile = false;
+    bool            m_f_firstCall = false;          // InitSequence for processWebstream and processLokalFile
     int             m_LFcount;                      // Detection of end of header
     uint32_t        m_chunkcount = 0 ;              // Counter for chunked transfer
+    uint32_t        m_contentlength = 0;
     uint32_t        m_metaint = 0;                  // Number of databytes between metadata
-    int             m_bitrate = 0;                  // Bitrate in kb/sec
+    uint32_t        m_t0 = 0;                       // store millis(), is needed for a small delay
+    uint16_t        m_bitrate = 0;                  // Bitrate in kb/sec
     int16_t         m_btp=0;                        // Bytes to play
     int             m_metacount=0;                  // Number of bytes in metadata
+    int             m_controlCounter = 0;           // Status within readID3data() and readWaveHeader()
     String          m_icyname ;                     // Icecast station name
     String          m_icystreamtitle ;              // Streamtitle from metadata
     bool            m_firstmetabyte=false;          // True if first metabyte (counter)
@@ -129,6 +203,7 @@ protected:
     inline void await_data_request() {while(!digitalRead(dreq_pin)) NOP();}	  // Very short delay
     inline bool data_request()     {return(digitalRead(dreq_pin) == HIGH);}
 	
+    void     initInBuff();
     void     control_mode_on();
     void     control_mode_off();
     void     data_mode_on();
@@ -148,12 +223,18 @@ protected:
     void     stopSong() ;                                // Finish playing a song. Call this after
                                                          // the last playChunk call.
     String   urlencode(String str);
-    void     readID3Metadata();
+    int      read_MP3_Header(uint8_t *data, size_t len);
+    void     showID3Tag(String tag, const char* value);
     void     processLocalFile();
     void     processWebStream();
     void     processPlayListData();
+    bool     parseContentType(const char* ct);
+    void     processAudioHeaderData();
+    bool     readMetadata(uint8_t b);
     void     UTF8toASCII(char* str);
+    void     unicode2utf8(char* buff, uint32_t len);
     void     setDefaults();
+    void     loadUserCode();
 
     
 
@@ -173,7 +254,7 @@ public:
     bool     printVersion();                            // Print ID and version of vs1053 chip
     void     softReset() ;                              // Do a soft reset
     void 	 loop();
-    uint16_t ringused();
+    size_t   ringused();
     bool     connecttohost(String host);
     bool     connecttohost(const char* host, const char* user = "", const char* pwd = "");
     bool	 connecttoSD(String sdfile);
@@ -210,6 +291,29 @@ public:
         for(int i=0; i<(lenBase - lenStr); i++){
             res = indexOf(base, str, i);
             if(res > result) result = res;
+        }
+        return result;
+    }
+    int specialIndexOf (uint8_t* base, const char* str, int baselen, bool exact = false){
+        int result;  // seek for str in buffer or in header up to baselen, not nullterninated
+        if (strlen(str) > baselen) return -1; // if exact == true seekstr in buffer must have "\0" at the end
+        for (int i = 0; i < baselen - strlen(str); i++){
+            result = i;
+            for (int j = 0; j < strlen(str) + exact; j++){
+                if (*(base + i + j) != *(str + j)){
+                    result = -1;
+                    break;
+                }
+            }
+            if (result >= 0) break;
+        }
+        return result;
+    }
+    size_t bigEndian(uint8_t* base, uint8_t numBytes, uint8_t shiftLeft = 8){
+        size_t result = 0;
+        if(numBytes < 1 or numBytes > 4) return 0;
+        for (int i = 0; i < numBytes; i++) {
+                result += *(base + i) << (numBytes -i - 1) * shiftLeft;
         }
         return result;
     }
