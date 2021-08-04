@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jul 26 2021
+ *  Updated on: Aug 04 2021
  *      Author: Wolle
  */
 
@@ -10,7 +10,7 @@
 #define _vs1053_ext
 
 #include "Arduino.h"
-#include "base64.h"
+#include "libb64/cencode.h"
 #include "SPI.h"
 #include "SD.h"
 #include "SD_MMC.h"
@@ -171,6 +171,7 @@ private:
     bool            m_f_ctseen=false;               // First line of header seen or not
     bool            m_f_firstchunk=true;            // First chunk as input
     bool            m_f_swm = true;                 // Stream without metadata
+    bool            m_f_tts = false;                // text to speech
     bool            m_f_webfile = false;
     bool            m_f_firstCall = false;          // InitSequence for processWebstream and processLokalFile
     int             m_LFcount;                      // Detection of end of header
@@ -215,14 +216,13 @@ protected:
     void     sdi_send_fillers ( size_t length ) ;
     void     wram_write ( uint16_t address, uint16_t data ) ;
     uint16_t wram_read ( uint16_t address ) ;
-    void     handlebyte(uint8_t b);
-    void     showstreamtitle ( const char *ml, bool full );
+    void     showstreamtitle(const char* ml);
     bool     chkhdrline ( const char* str );
     void     startSong() ;                               // Prepare to start playing. Call this each
                                                          // time a new song starts.
     void     stopSong() ;                                // Finish playing a song. Call this after
                                                          // the last playChunk call.
-    String   urlencode(String str);
+    void     urlencode(char* buff, uint16_t buffLen, bool spacesOnly = false);
     int      read_MP3_Header(uint8_t *data, size_t len);
     void     showID3Tag(String tag, const char* value);
     void     processLocalFile();
@@ -230,7 +230,7 @@ protected:
     void     processPlayListData();
     bool     parseContentType(const char* ct);
     void     processAudioHeaderData();
-    bool     readMetadata(uint8_t b);
+    bool     readMetadata(uint8_t b, bool first = false);
     void     UTF8toASCII(char* str);
     void     unicode2utf8(char* buff, uint32_t len);
     void     setDefaults();
@@ -254,16 +254,17 @@ public:
     bool     printVersion();                            // Print ID and version of vs1053 chip
     void     softReset() ;                              // Do a soft reset
     void 	 loop();
-    size_t   ringused();
     bool     connecttohost(String host);
     bool     connecttohost(const char* host, const char* user = "", const char* pwd = "");
     bool	 connecttoSD(String sdfile);
     bool     connecttoSD(const char* sdfile);
     bool     connecttoFS(fs::FS &fs, const char* path);
-    bool     connecttospeech(String speech, String lang);
+    bool     connecttospeech(const char* speech, const char* lang);
     uint32_t getFileSize();
     uint32_t getFilePos();
     bool     setFilePos(uint32_t pos);
+    size_t   bufferFilled();
+    size_t   bufferFree();
 
     // implement several function with respect to the index of string
     bool startsWith (const char* base, const char* str) { return (strstr(base, str) - base) == 0;}
@@ -317,6 +318,38 @@ public:
         }
         return result;
     }
+    bool b64encode(const char* source, uint16_t sourceLength, char* dest){
+        size_t size = base64_encode_expected_len(sourceLength) + 1;
+        char * buffer = (char *) malloc(size);
+        if(buffer) {
+            base64_encodestate _state;
+            base64_init_encodestate(&_state);
+            int len = base64_encode_block(&source[0], sourceLength, &buffer[0], &_state);
+            len = base64_encode_blockend((buffer + len), &_state);
+            memcpy(dest, buffer, strlen(buffer));
+            dest[strlen(buffer)] = '\0';
+            free(buffer);
+            return true;
+        }
+        return false;
+    }
+    size_t urlencode_expected_len(const char* source){
+        size_t expectedLen = strlen(source);
+        for(int i = 0; i < strlen(source); i++) {
+            if(isalnum(source[i])){;}
+            else expectedLen += 2;
+        }
+        return expectedLen;
+    }
+    void trim(char* s){
+        uint8_t l = 0;
+        while(isspace(*(s + l))) l++;
+        for(uint16_t i = 0; i< strlen(s) - l; i++)  *(s + i) = *(s + i + l); // ltrim
+        char* back = s + strlen(s);
+        while(isspace(*--back));
+        *(back + 1) = '\0';      // rtrim
+    }
+
 
     inline uint8_t  getDatamode(){return m_datamode;}
     inline void     setDatamode(uint8_t dm){m_datamode=dm;}
