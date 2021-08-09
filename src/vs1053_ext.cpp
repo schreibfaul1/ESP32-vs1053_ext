@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 04 2021
+ *  Updated on: Aug 09 2021
  *      Author: Wolle
  */
 
@@ -842,13 +842,8 @@ void VS1053::processWebStream(){
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     if((InBuff.bufferFilled() >= maxFrameSize) && (f_stream == true)) { // fill > framesize?
-        if(m_f_webfile){
-                bytesDecoded = sendBytes(InBuff.getReadPtr(), maxFrameSize);
-        }
-        else { // not a webfile
-            bytesDecoded = sendBytes(InBuff.getReadPtr(), maxFrameSize);
-            InBuff.bytesWasRead(bytesDecoded);
-        }
+        bytesDecoded = sendBytes(InBuff.getReadPtr(), maxFrameSize);
+        InBuff.bytesWasRead(bytesDecoded);
     }
 
     // have we reached the end of the webfile?  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -856,10 +851,10 @@ void VS1053::processWebStream(){
         while(InBuff.bufferFilled() > 0){
             if(InBuff.bufferFilled() == 128){ // post tag?
                 if(indexOf((const char*)InBuff.getReadPtr(), "TAG", 0) == 0){
-                    log_i("%s", InBuff.getReadPtr() + 3);
+                   //  log_d("%s", InBuff.getReadPtr() + 3);
                     break;
                 }
-                else log_v("%s", InBuff.getReadPtr());
+                // else log_v("%s", InBuff.getReadPtr());
             }
             bytesDecoded = sendBytes(InBuff.getReadPtr(), InBuff.bufferFilled());
             if(bytesDecoded < 0) break;
@@ -882,18 +877,42 @@ void VS1053::processWebStream(){
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::processPlayListData() {
 
+    static bool f_entry = false;                            // entryflag for asx playlist
+    static bool f_title = false;                            // titleflag for asx playlist
+    static bool f_ref   = false;                            // refflag   for asx playlist
+    static bool f_begin = false;
+    static bool f_end   = false;
+
+    (void)f_title;  // is unused yet
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if(m_datamode == VS1053_PLAYLISTINIT) {                  // Initialize for receive .m3u file
+        // We are going to use metadata to read the lines from the .m3u file
+        // Sometimes this will only contain a single line
+        f_entry = false;
+        f_title = false;
+        f_ref   = false;
+        f_begin = false;
+        f_end   = false;
+        m_datamode = VS1053_PLAYLISTHEADER;                  // Handle playlist data
+        if(vs1053_info) vs1053_info("Read from playlist");
+    } // end AUDIO_PLAYLISTINIT
+
+    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     int av = 0;
     if(!m_f_ssl) av = client.available();
     else         av = clientsecure.available();
-    if(av < 1) return;
+    if(av < 1){
+        if(f_end) return;
+        if(f_begin) {f_end = true;}
+        else return;
+    } 
 
     char pl[256]; // playlistline
     uint8_t b = 0;
     int16_t pos = 0;
 
-    static bool f_entry = false;                            // entryflag for asx playlist
-    static bool f_title = false;                            // titleflag for asx playlist
-    static bool f_ref   = false;                            // refflag   for asx playlist
+
 
     while(true){
         if(!m_f_ssl)  b = client.read();
@@ -903,26 +922,17 @@ void VS1053::processPlayListData() {
         if(b < 0x20 || b > 0x7E) continue;
         pl[pos] = b;
         pos++;
-        if(pos == 255){pl[pos] = '\0'; log_e("headerline oberflow"); break;}
+        if(pos == 255){pl[pos] = '\0'; log_e("playlistline oberflow"); break;}
     }
+
+    // log_i("pl=%s", pl);
+
 
     if(strlen(pl) == 0 && m_datamode == VS1053_PLAYLISTHEADER) {
         if(vs1053_info) vs1053_info("Switch to PLAYLISTDATA");
         m_datamode = VS1053_PLAYLISTDATA;                    // Expecting data now
         return;
     }
-
-
-    // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if(m_datamode == VS1053_PLAYLISTINIT) {                  // Initialize for receive .m3u file
-        // We are going to use metadata to read the lines from the .m3u file
-        // Sometimes this will only contain a single line
-        f_entry = false;
-        f_title = false;
-        f_ref   = false;
-        m_datamode = VS1053_PLAYLISTHEADER;                  // Handle playlist data
-        if(vs1053_info) vs1053_info("Read from playlist");
-    } // end AUDIO_PLAYLISTINIT
 
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_datamode == VS1053_PLAYLISTHEADER) {                // Read header
@@ -967,6 +977,7 @@ void VS1053::processPlayListData() {
     if(m_datamode == VS1053_PLAYLISTDATA) {                  // Read next byte of .m3u file data
         sprintf(chbuf, "Playlistdata: %s", pl);             // Show playlistdata
         if(vs1053_info) vs1053_info(chbuf);
+        if(!f_begin) f_begin = true;                        // first playlistdata received
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         if(m_playlistFormat == FORMAT_M3U) {
@@ -989,8 +1000,8 @@ void VS1053::processPlayListData() {
                connecttohost(pl + pos + 9);
                return;
            }
-           sprintf(chbuf, "Entry in playlist found: %s", pl);
-           if(vs1053_info) vs1053_info(chbuf);
+           //sprintf(chbuf, "Entry in playlist found: %s", pl);
+           //if(vs1053_info) vs1053_info(chbuf);
            pos = indexOf(pl, "http", 0);                    // Search for "http"
            const char* host;
            if(pos >= 0) {                                   // Does URL contain "http://"?
@@ -1020,8 +1031,15 @@ void VS1053::processPlayListData() {
             if(startsWith(pl, "Length1")) f_title = true;               // if no Title is available
             if((f_ref == true) && (strlen(pl) == 0)) f_title = true;
 
-            if(f_ref && f_title) {                                      // we have both StationName and StationURL
-                log_i("connect to new host %s", m_lastHost);
+            if(indexOf(pl, "Invalid username", 0) >= 0){ // Unable to access account: Invalid username or password
+                m_f_running = false;
+                stopSong();
+                m_datamode = VS1053_NONE;
+                return;
+            }
+
+            if(f_end) {                                      // we have both StationName and StationURL
+                log_d("connect to new host %s", m_lastHost);
                 connecttohost(m_lastHost);                              // Connect to it
             }
             return;
@@ -1030,6 +1048,7 @@ void VS1053::processPlayListData() {
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         if(m_playlistFormat == FORMAT_ASX) { // Advanced Stream Redirector
             if(indexOf(pl, "<entry>", 0) >= 0) f_entry = true;      // found entry tag (returns -1 if not found)
+
             if(f_entry) {
                 if(indexOf(pl, "ref href", 0) > 0) {                // <ref href="http://87.98.217.63:24112/stream" />
                     pos = indexOf(pl, "http", 0);
@@ -1037,10 +1056,10 @@ void VS1053::processPlayListData() {
                         char* plsURL = (pl + pos);                  // http://87.98.217.63:24112/stream" />
                         int pos1 = indexOf(plsURL, "\"", 0);        // http://87.98.217.63:24112/stream
                         if(pos1 > 0) {
-                            plsURL[pos1] = 0;
+                            plsURL[pos1] = '\0';
                         }
-                        memcpy(m_lastHost, plsURL, strlen(plsURL)); // save url in array
-                        log_i("m_plsURL = %s",pl);
+                        memcpy(m_lastHost, plsURL, strlen(plsURL) + 1); // save url in array
+                        log_d("m_lastHost = %s",m_lastHost);
                         // Now we have an URL for a stream in host.
                         f_ref = true;
                     }
@@ -1059,7 +1078,13 @@ void VS1053::processPlayListData() {
                     f_title = true;
                 }
             } //entry
-            if(f_ref && f_title) {   //we have both StationName and StationURL
+            if(indexOf(pl, "http", 0) == 0) { //url only in asx
+                memcpy(m_lastHost, pl, strlen(pl)); // save url in array
+                m_lastHost[strlen(pl)] = '\0';
+                log_d("m_lastHost = %s",m_lastHost);
+                connecttohost(pl);
+            }
+            if(f_end) {   //we have both StationName and StationURL
                 connecttohost(m_lastHost);                          // Connect to it
             }
         }  //asx
@@ -1076,7 +1101,7 @@ void VS1053::processAudioHeaderData() {
 
     char hl[512]; // headerline
     uint8_t b = 0;
-    uint8_t pos = 0;
+    uint16_t pos = 0;
     int16_t idx = 0;
 
     while(true){
@@ -1093,8 +1118,6 @@ void VS1053::processAudioHeaderData() {
             break;
         }
     }
-
-    log_i("hl=%s", hl);
 
     if(!pos && m_f_ctseen){  // audio header complete?
         m_datamode = VS1053_DATA;                         // Expecting data now
@@ -1152,30 +1175,38 @@ void VS1053::processAudioHeaderData() {
         connecttohost(c_host);
     }
     else if(startsWith(hl, "content-disposition:")) {
-        int pos1, pos2, pos3;
+        int pos1, pos2; // pos3;
         // e.g we have this headerline:  content-disposition: attachment; filename=stream.asx
         // filename is: "stream.asx"
         pos1 = indexOf(hl, "filename=", 0);
-        if(pos1 > 0) pos1+=9;
+        if(pos1 > 0){
+            pos1 += 9;
+            if(hl[pos1] == '\"') pos1++;  // remove '\"' around filename if present
+            pos2 = strlen(hl);
+            if(hl[pos2 - 1] == '\"') hl[pos2 - 1] = '\0';
+        }
+
+        log_d("Filename is %s", hl + pos1);
+
 
         // and we have this lasthost:
         // https://dancefox24.de/plugins/radio_laut_fm/stream_listen.php?action=asx&stream_ip=....
         // remove "?" and everything afterwards, the url is now:
         // https://dancefox24.de/plugins/radio_laut_fm/stream_listen.php
 
-        pos2 = indexOf(m_lastHost, "?", 0);
-        if(pos2 > 0) m_lastHost[pos2] = '\0';
+        // pos2 = indexOf(m_lastHost, "?", 0);
+        // if(pos2 > 0) m_lastHost[pos2] = '\0';
 
-        // now seek for the last "/" in lasthost
-        pos3 = lastIndexOf(m_lastHost, "/");
-        m_lastHost[pos3 + 1] = '\0';
+        // // now seek for the last "/" in lasthost
+        // pos3 = lastIndexOf(m_lastHost, "/");
+        // m_lastHost[pos3 + 1] = '\0';
 
-        // and then concatinate;
-        // https://dancefox24.de/plugins/radio_laut_fm/stream_listen.php/stream.asx
-        memcpy(m_lastHost + pos3 + 1, hl + pos1, strlen(hl + pos1) + 1);
-        sprintf(chbuf, "redirect to new host \"%s\"", m_lastHost);
-        if(vs1053_info) vs1053_info(chbuf);
-        connecttohost(m_lastHost);
+        // // and then concatinate;
+        // // https://dancefox24.de/plugins/radio_laut_fm/stream_listen.php/stream.asx
+        // memcpy(m_lastHost + pos3 + 1, hl + pos1, strlen(hl + pos1) + 1);
+        // sprintf(chbuf, "redirect to new host \"%s\"", m_lastHost);
+        // if(vs1053_info) vs1053_info(chbuf);
+        // connecttohost(m_lastHost);
     }
     else if(startsWith(hl, "set-cookie:")    ||
             startsWith(hl, "pragma:")        ||
@@ -1277,7 +1308,7 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
         chbuf[pos_ml] = (char) b;                        // Put new char in metaline
         if(pos_ml < 510) pos_ml ++;
         chbuf[pos_ml] = 0;
-        if(pos_ml == 509) log_i("metaline overflow in AUDIO_METADATA! metaline=%s", chbuf) ;
+        if(pos_ml == 509) log_e("metaline overflow in AUDIO_METADATA! metaline=%s", chbuf) ;
         if(pos_ml == 510) { ; /* last current char in b */}
 
     }
@@ -1409,7 +1440,7 @@ bool VS1053::connecttohost(String host){
 //---------------------------------------------------------------------------------------------------------------------
 bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) {
     // user and pwd for authentification only, can be empty
-
+    
     if(strlen(host) == 0) {
         if(vs1053_info) vs1053_info("Hostaddress is empty");
         return false;
@@ -1455,6 +1486,8 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
     if(endsWith(host, ".m3u")) {m_playlistFormat = FORMAT_M3U; m_datamode = VS1053_PLAYLISTINIT;}
     if(endsWith(host, ".pls")) {m_playlistFormat = FORMAT_PLS; m_datamode = VS1053_PLAYLISTINIT;}
     if(endsWith(host, ".asx")) {m_playlistFormat = FORMAT_ASX; m_datamode = VS1053_PLAYLISTINIT;}
+        // if url ...=asx   www.fantasyfoxradio.de/infusions/gr_radiostatus_panel/gr_radiostatus_player.php?id=2&p=asx
+    if(endsWith(host, "=asx")) {m_playlistFormat = FORMAT_ASX; m_datamode = VS1053_PLAYLISTINIT;} 
 
      // In the URL there may be an extension, like noisefm.ru:8000/play.m3u&t=.m3u
     pos_slash     = indexOf(host, "/", 0);
@@ -1923,11 +1956,11 @@ int VS1053::read_MP3_Header(uint8_t *data, size_t len) {
         headerSize--;
         uint32_t decompsize = 0;
         if(compressed){
-            log_i("iscompressed");
+            log_d("iscompressed");
             decompsize = bigEndian(data + 6, 4);
             headerSize -= 4;
             (void) decompsize;
-            log_i("decompsize=%u", decompsize);
+            log_d("decompsize=%u", decompsize);
             return 6 + 4;
         }
         return 6;
@@ -1953,7 +1986,7 @@ int VS1053::read_MP3_Header(uint8_t *data, size_t len) {
         bool isUnicode = (ch==1) ? true : false;
 
         if(tag == "APIC") { // a image embedded in file, passing it to external function
-            log_i("framesize=%i", framesize);
+            log_d("framesize=%i", framesize);
             isUnicode = false;
             if(m_f_localfile){
                 size_t pos = id3Size - headerSize;

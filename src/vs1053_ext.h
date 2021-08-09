@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 04 2021
+ *  Updated on: Aug 09 2021
  *      Author: Wolle
  */
 
