@@ -1109,7 +1109,7 @@ void VS1053::processAudioHeaderData() {
         else         b = clientsecure.read();
         if(b == '\n') break;
         if(b == '\r') hl[pos] = 0;
-        if(b < 0x20 || b > 0x7E) continue;
+        if(b < 0x20) continue;
         hl[pos] = b;
         pos++;
         if(pos == 510){
@@ -1185,28 +1185,7 @@ void VS1053::processAudioHeaderData() {
             pos2 = strlen(hl);
             if(hl[pos2 - 1] == '\"') hl[pos2 - 1] = '\0';
         }
-
         log_d("Filename is %s", hl + pos1);
-
-
-        // and we have this lasthost:
-        // https://dancefox24.de/plugins/radio_laut_fm/stream_listen.php?action=asx&stream_ip=....
-        // remove "?" and everything afterwards, the url is now:
-        // https://dancefox24.de/plugins/radio_laut_fm/stream_listen.php
-
-        // pos2 = indexOf(m_lastHost, "?", 0);
-        // if(pos2 > 0) m_lastHost[pos2] = '\0';
-
-        // // now seek for the last "/" in lasthost
-        // pos3 = lastIndexOf(m_lastHost, "/");
-        // m_lastHost[pos3 + 1] = '\0';
-
-        // // and then concatinate;
-        // // https://dancefox24.de/plugins/radio_laut_fm/stream_listen.php/stream.asx
-        // memcpy(m_lastHost + pos3 + 1, hl + pos1, strlen(hl + pos1) + 1);
-        // sprintf(chbuf, "redirect to new host \"%s\"", m_lastHost);
-        // if(vs1053_info) vs1053_info(chbuf);
-        // connecttohost(m_lastHost);
     }
     else if(startsWith(hl, "set-cookie:")    ||
             startsWith(hl, "pragma:")        ||
@@ -1255,6 +1234,11 @@ void VS1053::processAudioHeaderData() {
         m_f_webfile = true; // Stream comes from a fileserver
         sprintf(chbuf, "content-length: %i", m_contentlength);
         if(vs1053_info) vs1053_info(chbuf);
+    }
+    else if(startsWith(hl, "icy-description:")) {
+        const char* c_idesc = (hl + 16);
+        while(c_idesc[0] == ' ') c_idesc++;
+        if(vs1053_icydescription) vs1053_icydescription(c_idesc);
     }
     else if((startsWith(hl, "transfer-encoding:"))){
         if(endsWith(hl, "chunked") || endsWith(hl, "Chunked") ) {     // Station provides chunked transfer
@@ -1536,6 +1520,8 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
     strcat(resp, "\r\n");
     strcat(resp, "Connection: keep-alive\r\n\r\n");
 
+    if(vs1053_icydescription) vs1053_icydescription("");
+
     const uint32_t TIMEOUT_MS{250};
     if(m_f_ssl == false) {
         uint32_t t = millis();
@@ -1545,7 +1531,6 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
             uint32_t dt = millis() - t;
             sprintf(chbuf, "Connected to server in %u ms", dt);
             if(vs1053_info) vs1053_info(chbuf);
-
             memcpy(m_lastHost, host, strlen(host) + 1);               // Remember the current s_host
             trim(m_lastHost);
             m_f_running = true;
