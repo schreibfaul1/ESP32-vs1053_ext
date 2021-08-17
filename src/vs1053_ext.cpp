@@ -1103,6 +1103,9 @@ void VS1053::processAudioHeaderData() {
     uint8_t b = 0;
     uint16_t pos = 0;
     int16_t idx = 0;
+    static bool f_icyname = false;
+    static bool f_icydescription = false;
+    static bool f_icyurl = false;
 
     while(true){
         if(!m_f_ssl) b = client.read();
@@ -1113,7 +1116,7 @@ void VS1053::processAudioHeaderData() {
         hl[pos] = b;
         pos++;
         if(pos == 510){
-            hl[pos] = '\0'; 
+            hl[pos] = '\0';
             log_e("headerline overflow");
             break;
         }
@@ -1127,11 +1130,24 @@ void VS1053::processAudioHeaderData() {
         uint idx = indexOf(chbuf, "?", 0);
         if(idx > 0) chbuf[idx] = 0;
         if(vs1053_lasthost) vs1053_lasthost(chbuf);
+        if(!f_icyname){if(vs1053_showstation) vs1053_showstation("");}
+        if(!f_icydescription){if(vs1053_icydescription) vs1053_icydescription("");}
+        if(!f_icyurl){if(vs1053_icyurl) vs1053_icyurl("");}
+        if(m_f_swm){if(vs1053_showstreamtitle) vs1053_showstreamtitle("");}
+        f_icyname = false;
+        f_icydescription = false;
+        f_icyurl = false;
         delay(50);  // #77
         return;
     }
     if(!pos){
         stopSong();
+        if(vs1053_showstation) vs1053_showstation("");
+        if(vs1053_icydescription) vs1053_icydescription("");
+        if(vs1053_icyurl) vs1053_icyurl("");
+        f_icyname = false;
+        f_icydescription = false;
+        f_icyurl = false;
         log_e("can't see content in audioHeaderData");
         return;
     }
@@ -1212,7 +1228,7 @@ void VS1053::processAudioHeaderData() {
         const char* c_metaint = (hl + 12);
         int32_t i_metaint = atoi(c_metaint);
         m_metaint = i_metaint;
-        if(m_metaint) m_f_swm = false     ;                            // Multimediastream
+        if(m_metaint) m_f_swm = false;                                // Multimediastream
     }
     else if(startsWith(hl, "icy-name:")) {
         char* c_icyname = (hl + 9); // Get station name
@@ -1225,6 +1241,7 @@ void VS1053::processAudioHeaderData() {
             sprintf(chbuf, "icy-name: %s", c_icyname);
             if(vs1053_info) vs1053_info(chbuf);
             if(vs1053_showstation) vs1053_showstation(c_icyname);
+            f_icyname = true;
         }
     }
     else if(startsWith(hl, "content-length:")) {
@@ -1238,7 +1255,36 @@ void VS1053::processAudioHeaderData() {
     else if(startsWith(hl, "icy-description:")) {
         const char* c_idesc = (hl + 16);
         while(c_idesc[0] == ' ') c_idesc++;
+
+        uint16_t len = 0;
+        uint16_t pos = 0;
+        uint16_t buflen = sizeof(hl);
+
+        while(hl[pos] != 0){
+            len = strlen(hl);
+            if(hl[pos] >= 0xC2 && hl[pos +1] >= 0x80) {    // is UTF8
+                if(hl[pos] >= 0xC0) pos+=2;
+                if(hl[pos] >= 0xE0) pos+=1;
+                if(hl[pos] >= 0xF0) pos+=1;
+                continue;
+            }
+            if(hl[pos] >= 0x80 && hl[pos+1] < 0x80){       // is not UTF8, is latin?
+                for(int i = len+1; i > pos; i--){
+                    hl[i+1] = hl[i];
+                }
+                uint8_t c = hl[pos];
+                hl[pos++] = 0xc0 | ((c >> 6) & 0x1f);      // 2+1+5 bits
+                hl[pos++] = 0x80 | ((char)c & 0x3f);       // 1+1+6 bits
+            }
+            pos++;
+            if(pos > buflen -3){
+                hl[buflen -1] = '\0';
+                break; // do not overwrite
+            }
+        }
+
         if(vs1053_icydescription) vs1053_icydescription(c_idesc);
+        f_icydescription = true;
     }
     else if((startsWith(hl, "transfer-encoding:"))){
         if(endsWith(hl, "chunked") || endsWith(hl, "Chunked") ) {     // Station provides chunked transfer
@@ -1254,6 +1300,7 @@ void VS1053::processAudioHeaderData() {
         sprintf(chbuf, "icy-url: %s", icyurl);
         if(vs1053_info) vs1053_info(chbuf);
         if(vs1053_icyurl) vs1053_icyurl(icyurl);
+        f_icyurl = true;
     }
     else if(startsWith(hl, "www-authenticate:")) {
         if(vs1053_info) vs1053_info("authentification failed, wrong credentials?");
@@ -1273,10 +1320,12 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
 
     static uint16_t pos_ml = 0;                          // determines the current position in metaline
     static uint16_t metalen = 0;
+    static uint8_t  utf8 = 0;
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(first){
         pos_ml = 0;
         metalen = 0;
+        utf8 = 0;
         return true;
     }
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1289,18 +1338,39 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
         pos_ml = 0; chbuf[pos_ml] = 0;                   // Prepare for new line
     }
     else {
-        if(b < 128){                                     // is ASCII
+        if(utf8){
+            if(b < 0x80) { // can't be UTF8 is latin coded?
+                pos_ml--;
+                utf8 = 0;
+                uint8_t c = chbuf[pos_ml];
+                chbuf[pos_ml++] = 0xc0 | ((c >> 6) & 0x1f);  // 2+1+5 bits
+                chbuf[pos_ml++] = 0x80 | ((char)c & 0x3f);   // 1+1+6 bits
+                chbuf[pos_ml++] = (char) b;
+            }
+            else{
+                chbuf[pos_ml++] = (char) b; // is UTF-8 trailing byte
+                utf8--;
+            }
+        }
+        else if(b >= 0xC2 && !utf8){
+            if(b >= 0xC0) utf8 = 1;
+            if(b >= 0xE0) utf8 = 2;
+            if(b >= 0xF0) utf8 = 3;
+            chbuf[pos_ml++] = (char) b; // is UTF-8 leading bytee
+        }
+        else if(b < 0x80){                          // is ASCII
             chbuf[pos_ml++] = (char) b;                  // Put new char in metaline
         }
-        else{                                            // is latin, convert to UTF8
+        else{                                // is latin, convert to UTF8
             chbuf[pos_ml++] = 0xc0 | ((b >> 6) & 0x1f);  // 2+1+5 bits
-            chbuf[pos_ml++] = 0x80 | (b & 0x3f);         // 1+1+6 bits
+            chbuf[pos_ml++] = 0x80 | ((char)b & 0x3f);   // 1+1+6 bits
         }
         if(pos_ml >= 510){                               // avoid overflow
             chbuf[510] = ';';                            // last current char in metaline
             chbuf[511] = '\0';
         }
     }
+
     if(--metalen == 0) {
         if(strlen(chbuf)) {                             // Any info present?
             // metaline contains artist and song name.  For example:
@@ -1314,6 +1384,7 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
             if(pos > 3) {                                // e.g. song_spot="T" MediaBaseId="0" itunesTrackId="0"
                 chbuf[pos] = 0;
             }
+
             if(!m_f_localfile) showstreamtitle(chbuf);   // Show artist and title if present in metadata
         }
         return true ;
@@ -1429,7 +1500,7 @@ bool VS1053::connecttohost(String host){
 //---------------------------------------------------------------------------------------------------------------------
 bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) {
     // user and pwd for authentification only, can be empty
-    
+
     if(strlen(host) == 0) {
         if(vs1053_info) vs1053_info("Hostaddress is empty");
         return false;
