@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 09 2021
+ *  Updated on: Aug 17 2021
  *      Author: Wolle
  */
 
@@ -1289,12 +1289,17 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
         pos_ml = 0; chbuf[pos_ml] = 0;                   // Prepare for new line
     }
     else {
-        chbuf[pos_ml] = (char) b;                        // Put new char in metaline
-        if(pos_ml < 510) pos_ml ++;
-        chbuf[pos_ml] = 0;
-        if(pos_ml == 509) log_e("metaline overflow in AUDIO_METADATA! metaline=%s", chbuf) ;
-        if(pos_ml == 510) { ; /* last current char in b */}
-
+        if(b < 128){                                     // is ASCII
+            chbuf[pos_ml++] = (char) b;                  // Put new char in metaline
+        }
+        else{                                            // is latin, convert to UTF8
+            chbuf[pos_ml++] = 0xc0 | ((b >> 6) & 0x1f);  // 2+1+5 bits
+            chbuf[pos_ml++] = 0x80 | (b & 0x3f);         // 1+1+6 bits
+        }
+        if(pos_ml >= 510){                               // avoid overflow
+            chbuf[510] = ';';                            // last current char in metaline
+            chbuf[511] = '\0';
+        }
     }
     if(--metalen == 0) {
         if(strlen(chbuf)) {                             // Any info present?
