@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 17 2021
+ *  Updated on: Aug 18 2021
  *      Author: Wolle
  */
 
@@ -1092,6 +1092,52 @@ void VS1053::processPlayListData() {
     } // end AUDIO_PLAYLISTDATA
 }
 //---------------------------------------------------------------------------------------------------------------------
+bool VS1053::latinToUTF8(char* buff, size_t bufflen){
+    // most stations send  strings in UTF-8 but a few sends in latin. To standardize this, all latin strings are
+    // converted to UTF-8. If UTF-8 is already present, nothing is done and true is returned.
+    // A conversion to UTF-8 extends the string. Therefore it is necessary to know the buffer size. If the converted
+    // string does not fit into the buffer, false is returned
+    // utf8 bytelength: >=0xF0 3 bytes, >=0xE0 2 bytes, >=0xC0 1 byte, e.g. e293ab is ⓫
+
+    uint16_t pos = 0;
+    uint8_t  ext_bytes = 0;
+    uint16_t len = strlen(buff);
+    uint8_t  c;
+
+    while(pos < len){
+        c = buff[pos];
+        if(c >= 0xC2) {    // is UTF8 char
+            pos++;
+            if(c >= 0xC0 && buff[pos] < 0x80) {ext_bytes++; pos++;}
+            if(c >= 0xE0 && buff[pos] < 0x80) {ext_bytes++; pos++;}
+            if(c >= 0xF0 && buff[pos] < 0x80) {ext_bytes++; pos++;}
+        }
+        else pos++;
+    }
+    if(!ext_bytes) return true; // is UTF-8, do nothing
+
+    pos = 0;
+
+    while(buff[pos] != 0){
+        len = strlen(buff);
+        if(buff[pos] >= 0x80 && buff[pos+1] < 0x80){       // is not UTF8, is latin?
+            for(int i = len+1; i > pos; i--){
+                buff[i+1] = buff[i];
+            }
+            uint8_t c = buff[pos];
+            buff[pos++] = 0xc0 | ((c >> 6) & 0x1f);      // 2+1+5 bits
+            buff[pos++] = 0x80 | ((char)c & 0x3f);       // 1+1+6 bits
+        }
+        pos++;
+        if(pos > bufflen -3){
+            buff[bufflen -1] = '\0';
+            return false; // do not overwrite
+        }
+    }
+    return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
 void VS1053::processAudioHeaderData() {
 
     int av = 0;
@@ -1208,6 +1254,7 @@ void VS1053::processAudioHeaderData() {
             startsWith(hl, "expires:")       ||
             startsWith(hl, "cache-control:") ||
             startsWith(hl, "icy-pub:")       ||
+            startsWith(hl, "p3p:")           ||
             startsWith(hl, "accept-ranges:") ){
         ; // do nothing
     }
@@ -1256,32 +1303,7 @@ void VS1053::processAudioHeaderData() {
         const char* c_idesc = (hl + 16);
         while(c_idesc[0] == ' ') c_idesc++;
 
-        uint16_t len = 0;
-        uint16_t pos = 0;
-        uint16_t buflen = sizeof(hl);
-
-        while(hl[pos] != 0){
-            len = strlen(hl);
-            if(hl[pos] >= 0xC2 && hl[pos +1] >= 0x80) {    // is UTF8
-                if(hl[pos] >= 0xC0) pos+=2;
-                if(hl[pos] >= 0xE0) pos+=1;
-                if(hl[pos] >= 0xF0) pos+=1;
-                continue;
-            }
-            if(hl[pos] >= 0x80 && hl[pos+1] < 0x80){       // is not UTF8, is latin?
-                for(int i = len+1; i > pos; i--){
-                    hl[i+1] = hl[i];
-                }
-                uint8_t c = hl[pos];
-                hl[pos++] = 0xc0 | ((c >> 6) & 0x1f);      // 2+1+5 bits
-                hl[pos++] = 0x80 | ((char)c & 0x3f);       // 1+1+6 bits
-            }
-            pos++;
-            if(pos > buflen -3){
-                hl[buflen -1] = '\0';
-                break; // do not overwrite
-            }
-        }
+        latinToUTF8(hl, sizeof(hl)); // if already UTF-0 do nothing, otherwise convert to UTF-8
 
         if(vs1053_icydescription) vs1053_icydescription(c_idesc);
         f_icydescription = true;
@@ -1298,7 +1320,7 @@ void VS1053::processAudioHeaderData() {
         idx = 0;
         while(icyurl[idx] == ' ') {idx ++;} icyurl += idx;            // remove leading blanks
         sprintf(chbuf, "icy-url: %s", icyurl);
-        if(vs1053_info) vs1053_info(chbuf);
+        // if(vs1053_info) vs1053_info(chbuf);
         if(vs1053_icyurl) vs1053_icyurl(icyurl);
         f_icyurl = true;
     }
@@ -1320,12 +1342,10 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
 
     static uint16_t pos_ml = 0;                          // determines the current position in metaline
     static uint16_t metalen = 0;
-    static uint8_t  utf8 = 0;
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(first){
         pos_ml = 0;
         metalen = 0;
-        utf8 = 0;
         return true;
     }
     // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1338,37 +1358,12 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
         pos_ml = 0; chbuf[pos_ml] = 0;                   // Prepare for new line
     }
     else {
-        if(utf8){
-            if(b < 0x80) { // can't be UTF8 is latin coded?
-                pos_ml--;
-                utf8 = 0;
-                uint8_t c = chbuf[pos_ml];
-                chbuf[pos_ml++] = 0xc0 | ((c >> 6) & 0x1f);  // 2+1+5 bits
-                chbuf[pos_ml++] = 0x80 | ((char)c & 0x3f);   // 1+1+6 bits
-                chbuf[pos_ml++] = (char) b;
-            }
-            else{
-                chbuf[pos_ml++] = (char) b; // is UTF-8 trailing byte
-                utf8--;
-            }
-        }
-        else if(b >= 0xC2 && !utf8){
-            if(b >= 0xC0) utf8 = 1;
-            if(b >= 0xE0) utf8 = 2;
-            if(b >= 0xF0) utf8 = 3;
-            chbuf[pos_ml++] = (char) b; // is UTF-8 leading bytee
-        }
-        else if(b < 0x80){                          // is ASCII
-            chbuf[pos_ml++] = (char) b;                  // Put new char in metaline
-        }
-        else{                                // is latin, convert to UTF8
-            chbuf[pos_ml++] = 0xc0 | ((b >> 6) & 0x1f);  // 2+1+5 bits
-            chbuf[pos_ml++] = 0x80 | ((char)b & 0x3f);   // 1+1+6 bits
-        }
-        if(pos_ml >= 510){                               // avoid overflow
-            chbuf[510] = ';';                            // last current char in metaline
-            chbuf[511] = '\0';
-        }
+
+        chbuf[pos_ml] = (char) b;                        // Put new char in metaline
+        if(pos_ml < 510) pos_ml ++;
+        chbuf[pos_ml] = 0;
+        if(pos_ml == 509) log_e("metaline overflow in AUDIO_METADATA! metaline=%s", chbuf) ;
+        if(pos_ml == 510) { ; /* last current char in b */}
     }
 
     if(--metalen == 0) {
@@ -1380,6 +1375,8 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
             // Isolate the StreamTitle, remove leading and trailing quotes if present.
             // log_i("ST %s", metaline);
 
+            latinToUTF8(chbuf, sizeof(chbuf)); // convert to UTF-8 if necessary
+
             int pos = indexOf(chbuf, "song_spot", 0);    // remove some irrelevant infos
             if(pos > 3) {                                // e.g. song_spot="T" MediaBaseId="0" itunesTrackId="0"
                 chbuf[pos] = 0;
@@ -1389,7 +1386,7 @@ bool VS1053::readMetadata(uint8_t b, bool first) {
         }
         return true ;
     }
-    return false;// end_METADATA
+    return false; // end_METADATA
 }
 //---------------------------------------------------------------------------------------------------------------------
 bool VS1053::parseContentType(const char* ct) {
@@ -1473,8 +1470,10 @@ void VS1053::setDefaults(){
     InBuff.resetBuffer();
     client.stop();
     client.flush(); // release memory
+    client.clearWriteError();
     clientsecure.stop();
     clientsecure.flush();
+    clientsecure.clearWriteError();
     m_f_ctseen=false;                                       // Contents type not seen yet
     m_metaint=0;                                            // No metaint yet
     m_LFcount=0;                                            // For detection end of header
@@ -1596,13 +1595,11 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
     strcat(resp, "\r\n");
     strcat(resp, "Connection: keep-alive\r\n\r\n");
 
-    if(vs1053_icydescription) vs1053_icydescription("");
-
     const uint32_t TIMEOUT_MS{250};
     if(m_f_ssl == false) {
         uint32_t t = millis();
         if(client.connect(hostwoext, port, TIMEOUT_MS)) {
-            client.setNoDelay(true);
+            // client.setNoDelay(true);
             client.print(resp);
             uint32_t dt = millis() - t;
             sprintf(chbuf, "Connected to server in %u ms", dt);
@@ -1612,6 +1609,7 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
             m_f_running = true;
             if(hostwoext) free(hostwoext);
             if(extension) free(extension);
+            while(!client.connected()){;} // wait until the connection is established
             return true;
         }
     }
@@ -1620,7 +1618,7 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
     if(m_f_ssl == true) {
         uint32_t t = millis();
         if(clientsecure.connect(hostwoext, port, TIMEOUT_MS_SSL)) {
-            clientsecure.setNoDelay(true);
+            // clientsecure.setNoDelay(true);
             // if(vs1053_info) vs1053_info("SSL/TLS Connected to server");
             clientsecure.print(resp);
             uint32_t dt = millis() - t;
@@ -1630,6 +1628,7 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
             m_f_running = true;
             if(hostwoext) free(hostwoext);
             if(extension) free(extension);
+            while(!clientsecure.connected()){;}
             return true;
         }
     }
@@ -1637,6 +1636,7 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
     if(vs1053_info) vs1053_info(chbuf);
     if(vs1053_showstation) vs1053_showstation("");
     if(vs1053_showstreamtitle) vs1053_showstreamtitle("");
+    if(vs1053_icydescription) vs1053_icydescription("");
     m_lastHost[0] = 0;
     if(hostwoext) free(hostwoext);
     if(extension) free(extension);

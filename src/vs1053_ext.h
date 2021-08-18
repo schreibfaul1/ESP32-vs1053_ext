@@ -204,7 +204,7 @@ protected:
     inline void CS_LOW()   {( cs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << ( cs_pin - 32) : GPIO.out_w1tc = 1 <<  cs_pin;}
     inline void await_data_request() {while(!digitalRead(dreq_pin)) NOP();}	  // Very short delay
     inline bool data_request()     {return(digitalRead(dreq_pin) == HIGH);}
-	
+
     void     initInBuff();
     void     control_mode_on();
     void     control_mode_off();
@@ -230,6 +230,7 @@ protected:
     void     processWebStream();
     void     processPlayListData();
     bool     parseContentType(const char* ct);
+    bool     latinToUTF8(char* buff, size_t bufflen);
     void     processAudioHeaderData();
     bool     readMetadata(uint8_t b, bool first = false);
     void     UTF8toASCII(char* str);
@@ -237,7 +238,6 @@ protected:
     void     setDefaults();
     void     loadUserCode();
 
-    
 
 
 public:
