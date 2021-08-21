@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 09 2021
+ *  Updated on: Aug 21 2021
  *      Author: Wolle
  */
 
@@ -164,10 +164,6 @@ private:
     bool            m_f_ssl=false;
     uint8_t         m_endFillByte ;                 // Byte to send when stopping song
     uint16_t        m_datamode=0;                   // Statemaschine
-    String          m_metaline ;                    // Readable line in metadata
-    String          m_mp3title;                     // Name of the mp3 file
-    String          m_icyurl="";                    // Store ie icy-url if received
-    String          m_st_remember="";               // Save the last streamtitle
     bool            m_f_chunked = false ;           // Station provides chunked transfer
     bool            m_f_ctseen=false;               // First line of header seen or not
     bool            m_f_firstchunk=true;            // First chunk as input
@@ -184,8 +180,6 @@ private:
     int16_t         m_btp=0;                        // Bytes to play
     int             m_metacount=0;                  // Number of bytes in metadata
     int             m_controlCounter = 0;           // Status within readID3data() and readWaveHeader()
-    String          m_icyname ;                     // Icecast station name
-    String          m_icystreamtitle ;              // Streamtitle from metadata
     bool            m_firstmetabyte=false;          // True if first metabyte (counter)
     bool            m_f_running = false;
     bool            m_f_localfile = false ;         // Play from local mp3-file
@@ -218,14 +212,13 @@ protected:
     void     wram_write ( uint16_t address, uint16_t data ) ;
     uint16_t wram_read ( uint16_t address ) ;
     void     showstreamtitle(const char* ml);
-    bool     chkhdrline ( const char* str );
     void     startSong() ;                               // Prepare to start playing. Call this each
                                                          // time a new song starts.
     void     stopSong() ;                                // Finish playing a song. Call this after
                                                          // the last playChunk call.
     void     urlencode(char* buff, uint16_t buffLen, bool spacesOnly = false);
     int      read_MP3_Header(uint8_t *data, size_t len);
-    void     showID3Tag(String tag, const char* value);
+    void     showID3Tag(const char* tag, const char* value);
     void     processLocalFile();
     void     processWebStream();
     void     processPlayListData();
@@ -251,7 +244,7 @@ public:
     void     setVolume(uint8_t vol);                    // Set the player volume.Level from 0-21, higher is louder.
     void     setTone(uint8_t* rtone);                   // Set the player baas/treble, 4 nibbles for treble gain/freq and bass gain/freq
     uint8_t  getVolume();                               // Get the current volume setting, higher is louder.
-    void     printDetails();                            // Print configuration details to serial output.
+    void     printDetails(const char* str);             // Print configuration details to serial output.
     bool     printVersion();                            // Print ID and version of vs1053 chip
     void     softReset() ;                              // Do a soft reset
     void 	 loop();
@@ -263,6 +256,7 @@ public:
     bool     connecttospeech(const char* speech, const char* lang);
     uint32_t getFileSize();
     uint32_t getFilePos();
+    uint32_t getAudioDataStartPos();
     bool     setFilePos(uint32_t pos);
     size_t   bufferFilled();
     size_t   bufferFree();
