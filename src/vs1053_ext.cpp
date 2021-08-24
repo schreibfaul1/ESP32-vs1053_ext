@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 21 2021
+ *  Updated on: Aug 25 2021
  *      Author: Wolle
  */
 
@@ -932,6 +932,10 @@ void VS1053::processPlayListData() {
         sprintf(chbuf, "Playlistheader: %s", pl);           // Show playlistheader
         if(vs1053_info) vs1053_info(chbuf);
 
+            if(indexOf(pl, "Connection:close", 0) >= 0){        // not a playlist
+            m_datamode = VS1053_HEADER;
+        }
+
         int pos = indexOf(pl, "404 Not Found", 0);
         if(pos >= 0) {
             m_datamode = VS1053_NONE;
@@ -970,6 +974,14 @@ void VS1053::processPlayListData() {
         sprintf(chbuf, "Playlistdata: %s", pl);             // Show playlistdata
         if(vs1053_info) vs1053_info(chbuf);
         if(!f_begin) f_begin = true;                        // first playlistdata received
+
+        pos = indexOf(pl, "<!DOCTYPE", 0);                  // webpage found
+        if(pos >= 0) {
+            m_datamode = VS1053_NONE;
+            if(vs1053_info) vs1053_info("Not Found");
+            stopSong();
+            return;
+        }
 
         // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         if(m_playlistFormat == FORMAT_M3U) {
