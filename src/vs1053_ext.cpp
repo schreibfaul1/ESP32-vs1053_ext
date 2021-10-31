@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 25 2021
+ *  Updated on: Oct 31 2021
  *      Author: Wolle
  */
 
@@ -1177,8 +1177,8 @@ void VS1053::processAudioHeaderData() {
         sprintf(chbuf, "Switch to DATA, metaint is %d", m_metaint);
         if(vs1053_info) vs1053_info(chbuf);
         memcpy(chbuf, m_lastHost, strlen(m_lastHost)+1);
-        uint idx = indexOf(chbuf, "?", 0);
-        if(idx > 0) chbuf[idx] = 0;
+    //    uint idx = indexOf(chbuf, "?", 0);
+    //    if(idx > 0) chbuf[idx] = 0;
         if(vs1053_lasthost) vs1053_lasthost(chbuf);
         if(!f_icyname){if(vs1053_showstation) vs1053_showstation("");}
         if(!f_icydescription){if(vs1053_icydescription) vs1053_icydescription("");}
