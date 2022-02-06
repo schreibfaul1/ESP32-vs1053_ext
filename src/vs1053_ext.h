@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 21 2021
+ *  Updated on: Feb 06 2022
  *      Author: Wolle
  */
 
@@ -150,6 +150,7 @@ private:
     const uint8_t SM_TESTS          = 5 ;         	// Bitnumber in SCI_MODE for tests
     const uint8_t SM_LINE1          = 14 ;        	// Bitnumber in SCI_MODE for Line input
 
+    SPIClass*       spi_VS1053 = NULL;
     SPISettings     VS1053_SPI;                     // SPI settings for this slave
 
     char            chbuf[512];
@@ -235,7 +236,7 @@ protected:
 
 public:
     // Constructor.  Only sets pin values.  Doesn't touch the chip.  Be sure to call begin()!
-    VS1053 ( uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin ) ;
+    VS1053 ( uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, uint8_t spi = VSPI, uint8_t mosi = 23, uint8_t miso = 19, uint8_t sclk = 18);
     ~VS1053();
 
     void     begin() ;                                  // Begin operation.  Sets pins correctly,

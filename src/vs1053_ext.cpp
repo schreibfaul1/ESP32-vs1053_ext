@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Oct 31 2021
+ *  Updated on: Feb 06 2022
  *      Author: Wolle
  */
 
@@ -137,9 +137,23 @@ uint32_t AudioBuffer::getReadPos() {
 //---------------------------------------------------------------------------------------------------------------------
 // **** VS1053 Impl ****
 //---------------------------------------------------------------------------------------------------------------------
-VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin) :
+VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin,  uint8_t spi, uint8_t mosi, uint8_t miso, uint8_t sclk) :
         cs_pin(_cs_pin), dcs_pin(_dcs_pin), dreq_pin(_dreq_pin)
 {
+    // default is VSPI (VSPI_MISO 19, VSPI_MOSI 23, VSPI_SCLK 18)
+    //            HSPI (HSPI_MISO 12, HSPI_MOSI 13, HSPI_SCLK 14)
+    
+    if(spi == VSPI){
+        spi_VS1053 = &SPI;
+    }
+    else if(spi == HSPI){
+        spi_VS1053 = new SPIClass(HSPI);
+        spi_VS1053->begin(sclk, miso, mosi, -1);
+    }
+    else{
+        log_e("unknown SPI authority");
+    }
+
     clientsecure.setInsecure();                 // update to ESP32 Arduino version 1.0.5-rc05 or higher
     m_endFillByte=0;
     curvol=50;
@@ -170,17 +184,17 @@ void VS1053::initInBuff() {
 void VS1053::control_mode_off()
 {
     CS_HIGH();                                  // End control mode
-    SPI.endTransaction();                       // Allow other SPI users
+    spi_VS1053->endTransaction();                       // Allow other SPI users
 }
 void VS1053::control_mode_on()
 {
-    SPI.beginTransaction(VS1053_SPI);           // Prevent other SPI users
+    spi_VS1053->beginTransaction(VS1053_SPI);           // Prevent other SPI users
     DCS_HIGH();                                 // Bring slave in control mode
     CS_LOW();
 }
 void VS1053::data_mode_on()
 {
-    SPI.beginTransaction(VS1053_SPI);           // Prevent other SPI users
+    spi_VS1053->beginTransaction(VS1053_SPI);           // Prevent other SPI users
     CS_HIGH();                                  // Bring slave in data mode
     DCS_LOW();
 }
@@ -188,17 +202,17 @@ void VS1053::data_mode_off()
 {
     //digitalWrite(dcs_pin, HIGH);              // End data mode
     DCS_HIGH();
-    SPI.endTransaction();                       // Allow other SPI users
+    spi_VS1053->endTransaction();                       // Allow other SPI users
 }
 //---------------------------------------------------------------------------------------------------------------------
 uint16_t VS1053::read_register(uint8_t _reg)
 {
     uint16_t result=0;
     control_mode_on();
-    SPI.write(3);                                           // Read operation
-    SPI.write(_reg);                                        // Register to write (0..0xF)
+    spi_VS1053->write(3);                                           // Read operation
+    spi_VS1053->write(_reg);                                        // Register to write (0..0xF)
     // Note: transfer16 does not seem to work
-    result=(SPI.transfer(0xFF) << 8) | (SPI.transfer(0xFF));  // Read 16 bits data
+    result=(spi_VS1053->transfer(0xFF) << 8) | (spi_VS1053->transfer(0xFF));  // Read 16 bits data
     await_data_request();                                   // Wait for DREQ to be HIGH again
     control_mode_off();
     return result;
@@ -207,9 +221,9 @@ uint16_t VS1053::read_register(uint8_t _reg)
 void VS1053::write_register(uint8_t _reg, uint16_t _value)
 {
     control_mode_on();
-    SPI.write(2);                                           // Write operation
-    SPI.write(_reg);                                        // Register to write (0..0xF)
-    SPI.write16(_value);                                    // Send 16 bits data
+    spi_VS1053->write(2);                                           // Write operation
+    spi_VS1053->write(_reg);                                        // Register to write (0..0xF)
+    spi_VS1053->write16(_value);                                    // Send 16 bits data
     await_data_request();
     control_mode_off();
 }
@@ -225,7 +239,7 @@ size_t VS1053::sendBytes(uint8_t* data, size_t len){
         if(len > vs1053_chunk_size){
             chunk_length = vs1053_chunk_size;
         }
-        SPI.writeBytes(data, chunk_length);
+        spi_VS1053->writeBytes(data, chunk_length);
         data         += chunk_length;
         len          -= chunk_length;
         bytesDecoded += chunk_length;
@@ -247,7 +261,7 @@ void VS1053::sdi_send_buffer(uint8_t* data, size_t len)
             chunk_length=vs1053_chunk_size;
         }
         len-=chunk_length;
-        SPI.writeBytes(data, chunk_length);
+        spi_VS1053->writeBytes(data, chunk_length);
         data+=chunk_length;
     }
     data_mode_off();
@@ -267,7 +281,7 @@ void VS1053::sdi_send_fillers(size_t len){
         }
         len-=chunk_length;
         while(chunk_length--){
-            SPI.write(m_endFillByte);
+            spi_VS1053->write(m_endFillByte);
         }
     }
     data_mode_off();
@@ -295,7 +309,7 @@ void VS1053::begin(){
     delay(100);
 
     // Init SPI in slow mode (0.2 MHz)
-    VS1053_SPI=SPISettings(200000, MSBFIRST, SPI_MODE0);
+    VS1053_SPI = SPISettings(200000, MSBFIRST, SPI_MODE0);
 //    printDetails("Right after reset/startup");
     delay(20);
     // Most VS1053 modules will start up in midi mode.  The result is that there is no audio
