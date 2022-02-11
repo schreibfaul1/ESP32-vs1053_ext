@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Feb 06 2022
+ *  Updated on: Feb 11 2022
  *      Author: Wolle
  */
 
@@ -239,14 +239,13 @@ public:
     VS1053 ( uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, uint8_t spi = VSPI, uint8_t mosi = 23, uint8_t miso = 19, uint8_t sclk = 18);
     ~VS1053();
 
-    void     begin() ;                                  // Begin operation.  Sets pins correctly,
-                                                        // and prepares SPI bus.
+    void     begin() ;                                  // Begin operation.  Sets pins correctly and prepares SPI bus.
     void     stop_mp3client();
     void     setVolume(uint8_t vol);                    // Set the player volume.Level from 0-21, higher is louder.
     void     setTone(uint8_t* rtone);                   // Set the player baas/treble, 4 nibbles for treble gain/freq and bass gain/freq
     uint8_t  getVolume();                               // Get the current volume setting, higher is louder.
     void     printDetails(const char* str);             // Print configuration details to serial output.
-    bool     printVersion();                            // Print ID and version of vs1053 chip
+    const char* printVersion();                         // Print ID and version of vs1053 chip
     void     softReset() ;                              // Do a soft reset
     void 	 loop();
     bool     connecttohost(String host);
