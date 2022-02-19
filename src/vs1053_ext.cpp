@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Feb 11 2022
+ *  Updated on: Feb 19 2022
  *      Author: Wolle
  */
 
@@ -576,6 +576,17 @@ void VS1053::processLocalFile() {
         f_stream = false;
         return;
     }
+
+    if(!f_stream && m_controlCounter == 100) {
+        f_stream = true;
+        if(vs1053_info) vs1053_info("stream ready");
+        if(m_resumeFilePos){
+            InBuff.resetBuffer();
+            setFilePos(m_resumeFilePos);
+            log_i("m_resumeFilePos %i", m_resumeFilePos);
+        }
+    }
+
     bytesCanBeWritten = InBuff.writeSpace();
     //----------------------------------------------------------------------------------------------------
     // some files contain further data after the audio block (e.g. pictures).
@@ -593,17 +604,12 @@ void VS1053::processLocalFile() {
         InBuff.bytesWritten(bytesAddedToBuffer);
     }
 
-//    if(psramFound() && bytesAddedToBuffer >4096)
-//        vTaskDelay(2);// PSRAM has a bottleneck in the queue, so wait a little bit
 
     if(bytesAddedToBuffer == -1) bytesAddedToBuffer = 0; // read error? eof?
     bytesCanBeRead = InBuff.bufferFilled();
     if(bytesCanBeRead > InBuff.getMaxBlockSize()) bytesCanBeRead = InBuff.getMaxBlockSize();
     if(bytesCanBeRead == InBuff.getMaxBlockSize()) { // mp3 or aac frame complete?
-        if(!f_stream) {
-            f_stream = true;
-            if(vs1053_info) vs1053_info("stream ready");
-        }
+
         if(m_controlCounter != 100){
             if(m_codec == CODEC_WAV){
             //     int res = read_WAV_Header(InBuff.getReadPtr(), bytesCanBeRead);
@@ -1467,16 +1473,21 @@ bool VS1053::parseContentType(const char* ct) {
     return ct_seen;
 }
 //---------------------------------------------------------------------------------------------------------------------
-void VS1053::stop_mp3client(){
+uint32_t VS1053::stop_mp3client(){
+    uint32_t pos = 0;
+    if(m_f_localfile){
+        pos = getFilePos() - InBuff.bufferFilled();
+        audiofile.close();
+        m_f_localfile=false;
+    }
     int v=read_register(SCI_VOL);
-    audiofile.close();
-    m_f_localfile=false;
     m_f_webstream=false;
     write_register(SCI_VOL, 0);                         // Mute while stopping
 
     client.flush();                                     // Flush stream client
     client.stop();                                      // Stop stream client
     write_register(SCI_VOL, v);
+    return pos;
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::setDefaults(){
@@ -1712,17 +1723,18 @@ void VS1053::UTF8toASCII(char* str){
     str[j] = 0;
 }
 //---------------------------------------------------------------------------------------------------------------------
-bool VS1053::connecttoSD(String sdfile){
-    return connecttoFS(SD, sdfile.c_str());
+bool VS1053::connecttoSD(String sdfile, uint32_t resumeFilePos){
+    return connecttoFS(SD, sdfile.c_str(), resumeFilePos);
 }
 
-bool VS1053::connecttoSD(const char* sdfile){
-    return connecttoFS(SD, sdfile);
+bool VS1053::connecttoSD(const char* sdfile, uint32_t resumeFilePos){
+    return connecttoFS(SD, sdfile, resumeFilePos);
 }
 
-bool VS1053::connecttoFS(fs::FS &fs, const char* path) {
+bool VS1053::connecttoFS(fs::FS &fs, const char* path, uint32_t resumeFilePos) {
 
     if(strlen(path)>255) return false;
+    m_resumeFilePos = resumeFilePos;
 
     char audioName[256];
 

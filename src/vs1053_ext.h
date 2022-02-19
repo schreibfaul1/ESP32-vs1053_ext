@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Feb 11 2022
+ *  Updated on: Feb 19 2022
  *      Author: Wolle
  */
 
@@ -175,6 +175,7 @@ private:
     int             m_LFcount;                      // Detection of end of header
     uint32_t        m_chunkcount = 0 ;              // Counter for chunked transfer
     uint32_t        m_contentlength = 0;
+    uint32_t        m_resumeFilePos = 0;
     uint32_t        m_metaint = 0;                  // Number of databytes between metadata
     uint32_t        m_t0 = 0;                       // store millis(), is needed for a small delay
     uint16_t        m_bitrate = 0;                  // Bitrate in kb/sec
@@ -240,7 +241,7 @@ public:
     ~VS1053();
 
     void     begin() ;                                  // Begin operation.  Sets pins correctly and prepares SPI bus.
-    void     stop_mp3client();
+    uint32_t stop_mp3client();
     void     setVolume(uint8_t vol);                    // Set the player volume.Level from 0-21, higher is louder.
     void     setTone(uint8_t* rtone);                   // Set the player baas/treble, 4 nibbles for treble gain/freq and bass gain/freq
     uint8_t  getVolume();                               // Get the current volume setting, higher is louder.
@@ -250,9 +251,9 @@ public:
     void 	 loop();
     bool     connecttohost(String host);
     bool     connecttohost(const char* host, const char* user = "", const char* pwd = "");
-    bool	 connecttoSD(String sdfile);
-    bool     connecttoSD(const char* sdfile);
-    bool     connecttoFS(fs::FS &fs, const char* path);
+    bool	 connecttoSD(String sdfile, uint32_t resumeFilePos = 0);
+    bool     connecttoSD(const char* sdfile, uint32_t resumeFilePos = 0);
+    bool     connecttoFS(fs::FS &fs, const char* path, uint32_t resumeFilePos = 0);
     bool     connecttospeech(const char* speech, const char* lang);
     uint32_t getFileSize();
     uint32_t getFilePos();
