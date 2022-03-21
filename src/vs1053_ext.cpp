@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Feb 19 2022
+ *  Updated on: Mar 21 2022
  *      Author: Wolle
  */
 
@@ -460,19 +460,16 @@ void VS1053::printDetails(const char* str){
     }
 }
 //---------------------------------------------------------------------------------------------------------------------
-const char* VS1053::printVersion(){
-    boolean flag=true;
-    uint16_t reg1 = 0, reg2 = 0, reg3 = 0;
-    reg1 = wram_read(0x1E00);
-    reg2 = wram_read(0x1E01);
-    reg3 = wram_read(0x1E02) & 0xFF;
-    if((reg1 ==0xFFFF)&&(reg2 == 0xFFFF)) {flag = false; log_e("all pins high?, VS1053 seems not connected");}
-    if((reg1 ==0x0000)&&(reg2 == 0x0000)) {flag = false; log_e("all pins low?, VS1053 not proper connected (no SCK?)");}
-    if( reg3 == 0xFF)                     {flag = false; log_e("VS1053 version too high");} 
-    sprintf(chbuf, "chipID = %d%d, version = %d", reg1, reg2, reg3);
-    if(vs1053_info) vs1053_info(chbuf);
-    if(flag) return chbuf;
-    return nullptr;
+uint8_t VS1053::printVersion(){
+    uint16_t reg = wram_read(0x1E02) & 0xFF;
+    return reg;
+}
+
+uint32_t VS1053::printChipID(){
+    uint32_t chipID = 0;
+    chipID =  wram_read(0x1E00) << 16;
+    chipID += wram_read(0x1E01);
+    return chipID;
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::showstreamtitle(const char* ml) {

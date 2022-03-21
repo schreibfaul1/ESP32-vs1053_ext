@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Feb 19 2022
+ *  Updated on: Mar 21 2022
  *      Author: Wolle
  */
 
@@ -246,7 +246,8 @@ public:
     void     setTone(uint8_t* rtone);                   // Set the player baas/treble, 4 nibbles for treble gain/freq and bass gain/freq
     uint8_t  getVolume();                               // Get the current volume setting, higher is louder.
     void     printDetails(const char* str);             // Print configuration details to serial output.
-    const char* printVersion();                         // Print ID and version of vs1053 chip
+    uint8_t  printVersion();                            // Returns version of vs1053 chip
+    uint32_t printChipID();                             // Returns chipID of vs1053 chip
     void     softReset() ;                              // Do a soft reset
     void 	 loop();
     bool     connecttohost(String host);
