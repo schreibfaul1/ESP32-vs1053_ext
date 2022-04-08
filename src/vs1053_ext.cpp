@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Mar 21 2022
+ *  Updated on: Apr 08 2022
  *      Author: Wolle
  */
 
@@ -479,7 +479,6 @@ void VS1053::showstreamtitle(const char* ml) {
 
     int16_t idx1, idx2;
     uint16_t i = 0, hash = 0;
-    static uint16_t sTit_remember = 0, sUrl_renember = 0;
 
     idx1 = indexOf(ml, "StreamTitle=", 0);
     if(idx1 >= 0){                                                              // Streamtitle found
@@ -490,8 +489,8 @@ void VS1053::showstreamtitle(const char* ml) {
 
         while(i < strlen(sTit)){hash += sTit[i] * i+1; i++;}
 
-        if(sTit_remember != hash){
-            sTit_remember = hash;
+        if(m_streamTitleHash != hash){
+            m_streamTitleHash = hash;
             if(vs1053_info) vs1053_info(sTit);
             uint8_t pos = 12;                                                   // remove "StreamTitle="
             if(sTit[pos] == '\'') pos++;                                        // remove leading  \'
@@ -509,8 +508,8 @@ void VS1053::showstreamtitle(const char* ml) {
         sUrl = strndup(ml + idx1, len + 1); sUrl[len] = '\0';
 
         while(i < strlen(sUrl)){hash += sUrl[i] * i+1; i++;}
-        if(sUrl_renember != hash){
-            sUrl_renember = hash;
+        if(m_streamUrlHash != hash){
+            m_streamUrlHash = hash;
             if(vs1053_info) vs1053_info(sUrl);
         }
         free(sUrl);
@@ -1510,6 +1509,8 @@ void VS1053::setDefaults(){
     m_f_webstream = false;
     m_f_tts = false;                                        // text to speech
     m_f_localfile = false;
+    m_streamTitleHash = 0;
+    m_streamUrlHash = 0;
 }
 //---------------------------------------------------------------------------------------------------------------------
 bool VS1053::connecttohost(String host){

@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Mar 21 2022
+ *  Updated on: Apr 08 2022
  *      Author: Wolle
  */
 
@@ -180,6 +180,8 @@ private:
     uint32_t        m_t0 = 0;                       // store millis(), is needed for a small delay
     uint16_t        m_bitrate = 0;                  // Bitrate in kb/sec
     int16_t         m_btp=0;                        // Bytes to play
+    uint16_t        m_streamTitleHash = 0;          // remember streamtitle, ignore multiple occurence in metadata
+    uint16_t        m_streamUrlHash = 0;            // remember streamURL, ignore multiple occurence in metadata
     int             m_metacount=0;                  // Number of bytes in metadata
     int             m_controlCounter = 0;           // Status within readID3data() and readWaveHeader()
     bool            m_firstmetabyte=false;          // True if first metabyte (counter)
