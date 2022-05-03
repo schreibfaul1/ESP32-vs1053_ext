@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Apr 12 2022
+ *  Updated on: May 03 2022
  *      Author: Wolle
  */
 
@@ -1513,6 +1513,11 @@ void VS1053::setDefaults(){
     m_streamUrlHash = 0;
 }
 //---------------------------------------------------------------------------------------------------------------------
+void VS1053::setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl){
+    if(timeout_ms)     m_timeout_ms     = timeout_ms;
+    if(timeout_ms_ssl) m_timeout_ms_ssl = timeout_ms_ssl;
+}
+//---------------------------------------------------------------------------------------------------------------------
 bool VS1053::connecttohost(String host){
     return connecttohost(host.c_str());
 }
@@ -1616,10 +1621,9 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
     strcat(resp, "\r\n");
     strcat(resp, "Connection: keep-alive\r\n\r\n");
 
-    const uint32_t TIMEOUT_MS{250};
     if(m_f_ssl == false) {
         uint32_t t = millis();
-        if(client.connect(hostwoext, port, TIMEOUT_MS)) {
+        if(client.connect(hostwoext, port, m_timeout_ms)) {
             // client.setNoDelay(true);
             client.print(resp);
             uint32_t dt = millis() - t;
@@ -1635,10 +1639,9 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
         }
     }
 
-    const uint32_t TIMEOUT_MS_SSL{2700};
     if(m_f_ssl == true) {
         uint32_t t = millis();
-        if(clientsecure.connect(hostwoext, port, TIMEOUT_MS_SSL)) {
+        if(clientsecure.connect(hostwoext, port, m_timeout_ms_ssl)) {
             // clientsecure.setNoDelay(true);
             // if(vs1053_info) vs1053_info("SSL/TLS Connected to server");
             clientsecure.print(resp);

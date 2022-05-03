@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Apr 08 2022
+ *  Updated on: May 03 2022
  *      Author: Wolle
  */
 
@@ -182,6 +182,8 @@ private:
     int16_t         m_btp=0;                        // Bytes to play
     uint16_t        m_streamTitleHash = 0;          // remember streamtitle, ignore multiple occurence in metadata
     uint16_t        m_streamUrlHash = 0;            // remember streamURL, ignore multiple occurence in metadata
+    uint16_t        m_timeout_ms = 250;
+    uint16_t        m_timeout_ms_ssl = 2700;
     int             m_metacount=0;                  // Number of bytes in metadata
     int             m_controlCounter = 0;           // Status within readID3data() and readWaveHeader()
     bool            m_firstmetabyte=false;          // True if first metabyte (counter)
@@ -252,6 +254,7 @@ public:
     uint32_t printChipID();                             // Returns chipID of vs1053 chip
     void     softReset() ;                              // Do a soft reset
     void 	 loop();
+    void setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl);
     bool     connecttohost(String host);
     bool     connecttohost(const char* host, const char* user = "", const char* pwd = "");
     bool	 connecttoSD(String sdfile, uint32_t resumeFilePos = 0);
