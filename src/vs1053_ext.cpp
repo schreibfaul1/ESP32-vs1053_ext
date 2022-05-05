@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: May 03 2022
+ *  Updated on: May 05 2022
  *      Author: Wolle
  */
 
@@ -594,7 +594,6 @@ void VS1053::processLocalFile() {
            }
     }
     //----------------------------------------------------------------------------------------------------
-
     bytesAddedToBuffer = audiofile.read(InBuff.getWritePtr(), bytesCanBeWritten);
     if(bytesAddedToBuffer > 0) {
         InBuff.bytesWritten(bytesAddedToBuffer);
@@ -1753,6 +1752,7 @@ bool VS1053::connecttoFS(fs::FS &fs, const char* path, uint32_t resumeFilePos) {
     sprintf(chbuf, "Reading file: \"%s\"", audioName);
     if(vs1053_info) {vTaskDelay(2); vs1053_info(chbuf);}
 
+    audiofile.close();
     if(fs.exists(audioName)) {
         audiofile = fs.open(audioName);
     } else {
