@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: May 05 2022
+ *  Updated on: May 13 2022
  *      Author: Wolle
  */
 
@@ -394,6 +394,7 @@ void VS1053::stopSong()
     m_f_localfile = false;
     m_f_webfile = false;
     m_f_webstream = false;
+    m_f_running = false;
 
     sdi_send_fillers(2052);
     delay(10);
