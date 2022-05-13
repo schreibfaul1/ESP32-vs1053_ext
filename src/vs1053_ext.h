@@ -199,8 +199,8 @@ private:
                                   88,90,91,92,93,94,95,96,97,98,99,100}; //22 elements
 protected:
     inline void DCS_HIGH() {(dcs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << (dcs_pin - 32) : GPIO.out_w1ts = 1 << dcs_pin;}
-	inline void DCS_LOW()  {(dcs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << (dcs_pin - 32) : GPIO.out_w1tc = 1 << dcs_pin;}
-	inline void CS_HIGH()  {( cs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << ( cs_pin - 32) : GPIO.out_w1ts = 1 <<  cs_pin;}
+    inline void DCS_LOW()  {(dcs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << (dcs_pin - 32) : GPIO.out_w1tc = 1 << dcs_pin;}
+    inline void CS_HIGH()  {( cs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << ( cs_pin - 32) : GPIO.out_w1ts = 1 <<  cs_pin;}
     inline void CS_LOW()   {( cs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << ( cs_pin - 32) : GPIO.out_w1tc = 1 <<  cs_pin;}
     inline void await_data_request() {while(!digitalRead(dreq_pin)) NOP();}	  // Very short delay
     inline bool data_request()     {return(digitalRead(dreq_pin) == HIGH);}
@@ -253,14 +253,15 @@ public:
     uint8_t  printVersion();                            // Returns version of vs1053 chip
     uint32_t printChipID();                             // Returns chipID of vs1053 chip
     void     softReset() ;                              // Do a soft reset
-    void 	 loop();
-    void setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl);
+    void     loop();
+    void     setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl);
     bool     connecttohost(String host);
     bool     connecttohost(const char* host, const char* user = "", const char* pwd = "");
-    bool	 connecttoSD(String sdfile, uint32_t resumeFilePos = 0);
+    bool     connecttoSD(String sdfile, uint32_t resumeFilePos = 0);
     bool     connecttoSD(const char* sdfile, uint32_t resumeFilePos = 0);
     bool     connecttoFS(fs::FS &fs, const char* path, uint32_t resumeFilePos = 0);
     bool     connecttospeech(const char* speech, const char* lang);
+    bool     isRunning() {return m_f_running;}
     uint32_t getFileSize();
     uint32_t getFilePos();
     uint32_t getAudioDataStartPos();
