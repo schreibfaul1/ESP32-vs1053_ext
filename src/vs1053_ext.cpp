@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: May 13 2022
+ *  Updated on: Jun 01.2022
  *      Author: Wolle
  */
 
@@ -137,22 +137,11 @@ uint32_t AudioBuffer::getReadPos() {
 //---------------------------------------------------------------------------------------------------------------------
 // **** VS1053 Impl ****
 //---------------------------------------------------------------------------------------------------------------------
-VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin,  uint8_t spi, uint8_t mosi, uint8_t miso, uint8_t sclk) :
+VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, uint8_t spi, uint8_t mosi, uint8_t miso, uint8_t sclk) :
         cs_pin(_cs_pin), dcs_pin(_dcs_pin), dreq_pin(_dreq_pin)
 {
-    // default is VSPI (VSPI_MISO 19, VSPI_MOSI 23, VSPI_SCLK 18)
-    //            HSPI (HSPI_MISO 12, HSPI_MOSI 13, HSPI_SCLK 14)
-    
-    if(spi == VSPI){
-        spi_VS1053 = &SPI;
-    }
-    else if(spi == HSPI){
-        spi_VS1053 = new SPIClass(HSPI);
-        spi_VS1053->begin(sclk, miso, mosi, -1);
-    }
-    else{
-        log_e("unknown SPI authority");
-    }
+    spi_VS1053 = new SPIClass(spi);
+    spi_VS1053->begin(sclk, miso, mosi, -1);
 
     clientsecure.setInsecure();                 // update to ESP32 Arduino version 1.0.5-rc05 or higher
     m_endFillByte=0;
