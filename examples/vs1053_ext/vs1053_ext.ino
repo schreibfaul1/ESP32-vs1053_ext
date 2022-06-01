@@ -6,10 +6,10 @@
 #include "vs1053_ext.h"
 
 // Digital I/O used
-//#define SD_CS          5
-#define SPI_MOSI      23
-#define SPI_MISO      19
-#define SPI_SCK       18
+//#define SD_CS        5
+#define VS1053_MOSI   23
+#define VS1053_MISO   19
+#define VS1053_SCK    18
 #define VS1053_CS      2
 #define VS1053_DCS     4
 #define VS1053_DREQ   36
@@ -19,7 +19,7 @@ String password = "xxxxxxxxxxxxxxxx";
 
 int volume=15;
 
-VS1053 mp3(VS1053_CS, VS1053_DCS, VS1053_DREQ);
+VS1053 mp3(VS1053_CS, VS1053_DCS, VS1053_DREQ, VSPI, VS1053_MOSI, VS1053_MISO, VS1053_SCK);
 
 //The setup function is called once at startup of the sketch
 void setup() {
