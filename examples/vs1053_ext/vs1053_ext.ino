@@ -25,7 +25,7 @@ VS1053 mp3(VS1053_CS, VS1053_DCS, VS1053_DREQ, VSPI, VS1053_MOSI, VS1053_MISO, V
 void setup() {
     //pinMode(SD_CS, OUTPUT);      digitalWrite(SD_CS, HIGH);
     Serial.begin(115200);
-    SPI.begin(SPI_SCK, SPI_MISO, SPI_MOSI);
+    SPI.begin(VS1053_SCK, VS1053_MISO, VS1053_MOSI);
     //SD.begin(SD_CS);
     WiFi.disconnect();
     WiFi.mode(WIFI_STA);
