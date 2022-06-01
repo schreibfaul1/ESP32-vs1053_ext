@@ -24,17 +24,20 @@ vs1053_lasthost &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; c
 #include "vs1053_ext.h"
 
 // Digital I/O used
-#define VS1053_CS     2
-#define VS1053_DCS    4
+#define VS1053_CS      2
+#define VS1053_DCS     4
 #define VS1053_DREQ   36
+
+#define VS1053_MOSI   23
+#define VS1053_MISO   19
+#define VS1053_SCK    18
 
 String ssid =     "Wolles-POWERLINE";
 String password = "xxxx";
 
 int volume=15;
 
-VS1053 mp3(VS1053_CS, VS1053_DCS, VS1053_DREQ);   // VSPI, 23, 19, 18
-// VS1053 vs1053(VS1053_CS, VS1053_DCS, VS1053_DREQ, HSPI, 13, 12, 14);
+VS1053 mp3(VS1053_CS, VS1053_DCS, VS1053_DREQ, VSPI, VS1053_MOSI, VS1053_MISO, VS1053_SCK);
 
 //The setup function is called once at startup of the sketch
 void setup() {
