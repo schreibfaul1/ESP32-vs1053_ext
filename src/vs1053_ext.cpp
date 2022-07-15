@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jun 01.2022
+ *  Updated on: Jul 16.2022
  *      Author: Wolle
  */
 
@@ -295,17 +295,17 @@ void VS1053::begin(){
     pinMode(dcs_pin, OUTPUT);
     DCS_HIGH();
     CS_HIGH();
-    delay(100);
+    delay(170);
 
     // Init SPI in slow mode (0.2 MHz)
     VS1053_SPI = SPISettings(200000, MSBFIRST, SPI_MODE0);
 //    printDetails("Right after reset/startup");
-    delay(20);
+
     // Most VS1053 modules will start up in midi mode.  The result is that there is no audio
     // when playing MP3.  You can modify the board, but there is a more elegant way:
     wram_write(0xC017, 3);                                  // GPIO DDR=3
     wram_write(0xC019, 0);                                  // GPIO ODATA=0
-    delay(100);
+
 //    printDetails("After test loop");
     softReset();                                            // Do a soft reset
     // Switch on the analog parts
@@ -316,14 +316,12 @@ void VS1053::begin(){
     VS1053_SPI=SPISettings(6700000, MSBFIRST, SPI_MODE0); // SPIDIV 12 -> 80/12=6.66 MHz
     write_register(SCI_MODE, _BV (SM_SDINEW) | _BV(SM_LINE1));
     //testComm("Fast SPI, Testing VS1053 read/write registers again... \n");
-    delay(10);
     await_data_request();
     m_endFillByte=wram_read(0x1E06) & 0xFF;
 //    sprintf(chbuf, "endFillByte is %X", endFillByte);
 //    if(vs1053_info) vs1053_info(chbuf);
 //    printDetails("After last clocksetting \n");
     loadUserCode(); // load in VS1053B if you want to play flac
-    delay(100);
 }
 //---------------------------------------------------------------------------------------------------------------------
 size_t VS1053::bufferFilled(){
