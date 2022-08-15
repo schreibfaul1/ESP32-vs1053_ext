@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jun 01.2022
+ *  Updated on: Aug 15.2022
  *      Author: Wolle
  */
 
@@ -10,6 +10,7 @@
 #define _vs1053_ext
 
 #include "Arduino.h"
+#include <vector>
 #include "libb64/cencode.h"
 #include "SPI.h"
 #include "SD.h"
@@ -36,6 +37,8 @@ extern __attribute__((weak)) void vs1053_icyurl(const char*);
 extern __attribute__((weak)) void vs1053_icydescription(const char*);
 extern __attribute__((weak)) void vs1053_lasthost(const char*);
 extern __attribute__((weak)) void vs1053_eof_stream(const char*); // The webstream comes to an end
+
+#define AUDIO_INFO(...) {char buff[512 + 64]; sprintf(buff,__VA_ARGS__); if(vs1053_info) vs1053_info(buff);}
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -106,18 +109,22 @@ class VS1053 : private AudioBuffer{
     AudioBuffer InBuff; // instance of input buffer
 
 private:
-    WiFiClient client;
-    WiFiClientSecure clientsecure;
+    WiFiClient            client;       // @suppress("Abstract class cannot be instantiated")
+    WiFiClientSecure      clientsecure; // @suppress("Abstract class cannot be instantiated")
+    WiFiClient*          _client = nullptr;
     File audiofile;
-
+    std::vector<char*>    m_playlistContent; // m3u8 playlist buffer
+    std::vector<char*>    m_playlistURL;     // m3u8 streamURLs buffer
+    std::vector<uint32_t> m_hashQueue;
 
 private:
-    enum : int { VS1053_NONE, VS1053_HEADER , VS1053_DATA, VS1053_METADATA, VS1053_PLAYLISTINIT,
-                 VS1053_PLAYLISTHEADER,  VS1053_PLAYLISTDATA, VS1053_SWM, VS1053_OGG};
-    enum : int { FORMAT_NONE = 0, FORMAT_M3U = 1, FORMAT_PLS = 2, FORMAT_ASX = 3};
+    enum : int { AUDIO_NONE, HTTP_RESPONSE_HEADER , AUDIO_DATA, AUDIO_LOCALFILE, AUDIO_METADATA, AUDIO_PLAYLISTINIT,
+                 AUDIO_PLAYLISTHEADER,  AUDIO_PLAYLISTDATA, VS1053_SWM, VS1053_OGG};
+    enum : int { FORMAT_NONE = 0, FORMAT_M3U = 1, FORMAT_PLS = 2, FORMAT_ASX = 3, FORMAT_M3U8 = 4};
 
     enum : int { CODEC_NONE, CODEC_WAV, CODEC_MP3, CODEC_AAC, CODEC_M4A, CODEC_FLAC, CODEC_OGG,
                  CODEC_OGG_FLAC, CODEC_OGG_OPUS};
+    enum : int { ST_NONE = 0, ST_WEBFILE = 1, ST_WEBSTREAM = 2};
 
 private:
     uint8_t       cs_pin ;                        	// Pin where CS line is connected
@@ -155,7 +162,11 @@ private:
 
     char            chbuf[512];
     char            m_lastHost[256];                // Store the last URL to a webstream
+    char*           m_playlistBuff = NULL;          // stores playlistdata
     uint8_t         m_codec = CODEC_NONE;           //
+    uint8_t         m_expectedCodec = CODEC_NONE;   // set in connecttohost (e.g. http://url.mp3 -> CODEC_MP3)
+    uint8_t         m_expectedPlsFmt = FORMAT_NONE; // set in connecttohost (e.g. streaming01.m3u) -> FORMAT_M3U)
+    uint8_t         m_streamType = ST_NONE;
     uint8_t         m_rev=0;                        // Revision
     uint8_t         m_playlistFormat = 0;           // M3U, PLS, ASX
     size_t          m_file_size = 0;                // size of the file
@@ -170,6 +181,9 @@ private:
     bool            m_f_firstchunk=true;            // First chunk as input
     bool            m_f_swm = true;                 // Stream without metadata
     bool            m_f_tts = false;                // text to speech
+    bool            m_f_Log = false;                // set in platformio.ini  -DAUDIO_LOG and -DCORE_DEBUG_LEVEL=3 or 4
+    bool            m_f_continue = false;           // next m3u8 chunk is available
+    bool            m_f_ts = true;                  // transport stream
     bool            m_f_webfile = false;
     bool            m_f_firstCall = false;          // InitSequence for processWebstream and processLokalFile
     int             m_LFcount;                      // Detection of end of header
@@ -227,10 +241,15 @@ protected:
     void     showID3Tag(const char* tag, const char* value);
     void     processLocalFile();
     void     processWebStream();
-    void     processPlayListData();
-    bool     parseContentType(const char* ct);
+    size_t   chunkedDataTransfer();
+    bool     readPlayListData();
+    const char* parsePlaylist_M3U();
+    const char* parsePlaylist_PLS();
+    const char* parsePlaylist_ASX();
+//    const char* parsePlaylist_M3U8();
+    bool     parseContentType(char* ct);
     bool     latinToUTF8(char* buff, size_t bufflen);
-    void     processAudioHeaderData();
+    bool     parseHttpResponseHeader();
     bool     readMetadata(uint8_t b, bool first = false);
     void     UTF8toASCII(char* str);
     void     unicode2utf8(char* buff, uint32_t len);
@@ -276,17 +295,27 @@ public:
         int slen = strlen(str);
         return (blen >= slen) && (0 == strcmp(base + blen - slen, str));
     }
-    int indexOf (const char* base, const char* str, int startIndex) {
-        int result;
-        int baselen = strlen(base);
-        if (strlen(str) > baselen || startIndex > baselen) result = -1;
-        else {
-            char* pos = strstr(base + startIndex, str);
-            if (pos == NULL) result = -1;
-            else result = pos - base;
-        }
-        return result;
+
+    int indexOf (const char* base, const char* str, int startIndex = 0) {
+    //fb
+        const char *p = base;
+        for (; startIndex > 0; startIndex--)
+            if (*p++ == '\0') return -1;
+        char* pos = strstr(p, str);
+        if (pos == nullptr) return -1;
+        return pos - base;
     }
+
+    int indexOf (const char* base, char ch, int startIndex = 0) {
+    //fb
+        const char *p = base;
+        for (; startIndex > 0; startIndex--)
+            if (*p++ == '\0') return -1;
+        char *pos = strchr(p, ch);
+        if (pos == nullptr) return -1;
+        return pos - base;
+    }
+
     int lastIndexOf(const char* base, const char* str) {
         int res = -1, result = -1;
         int lenBase = strlen(base);
@@ -344,19 +373,40 @@ public:
         }
         return expectedLen;
     }
-    void trim(char* s){
-        uint8_t l = 0;
-        while(isspace(*(s + l))) l++;
-        for(uint16_t i = 0; i< strlen(s) - l; i++)  *(s + i) = *(s + i + l); // ltrim
-        char* back = s + strlen(s);
-        while(isspace(*--back));
-        *(back + 1) = '\0';      // rtrim
+
+    void trim(char *s) {
+    //fb   trim in place
+        char *pe;
+        char *p = s;
+        while ( isspace(*p) ) p++; //left
+        pe = p; //right
+        while ( *pe != '\0' ) pe++;
+        do {
+            pe--;
+        } while ( (pe > p) && isspace(*pe) );
+        if (p == s) {
+            *++pe = '\0';
+        } else {  //move
+            while ( p <= pe ) *s++ = *p++;
+            *s = '\0';
+        }
     }
 
+    void vector_clear_and_shrink(std::vector<char*>&vec){
+        uint size = vec.size();
+        for (int i = 0; i < size; i++) {
+            if(vec[i]){
+                free(vec[i]);
+                vec[i] = NULL;
+            }
+        }
+        vec.clear();
+        vec.shrink_to_fit();
+    }
 
     inline uint8_t  getDatamode(){return m_datamode;}
     inline void     setDatamode(uint8_t dm){m_datamode=dm;}
-    inline uint32_t streamavail() {if(m_f_ssl==false) return client.available(); else return clientsecure.available();}
+    inline uint32_t streamavail(){ return _client ? _client->available() : 0;}
 };
 
 #endif
