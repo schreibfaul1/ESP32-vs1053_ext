@@ -172,19 +172,19 @@ void VS1053::initInBuff() {
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::control_mode_off()
 {
-    CS_HIGH();                                  // End control mode
-    spi_VS1053->endTransaction();                       // Allow other SPI users
+    CS_HIGH();                                     // End control mode
+    spi_VS1053->endTransaction();                  // Allow other SPI users
 }
 void VS1053::control_mode_on()
 {
-    spi_VS1053->beginTransaction(VS1053_SPI);           // Prevent other SPI users
-    DCS_HIGH();                                 // Bring slave in control mode
+    spi_VS1053->beginTransaction(VS1053_SPI_CTL);   // Prevent other SPI users
+    DCS_HIGH();                                     // Bring slave in control mode
     CS_LOW();
 }
 void VS1053::data_mode_on()
 {
-    spi_VS1053->beginTransaction(VS1053_SPI);           // Prevent other SPI users
-    CS_HIGH();                                  // Bring slave in data mode
+    spi_VS1053->beginTransaction(VS1053_SPI_DATA);  // Prevent other SPI users
+    CS_HIGH();                                      // Bring slave in data mode
     DCS_LOW();
 }
 void VS1053::data_mode_off()
@@ -297,31 +297,26 @@ void VS1053::begin(){
     CS_HIGH();
     delay(170);
 
-    // Init SPI in slow mode (0.2 MHz)
-    VS1053_SPI = SPISettings(200000, MSBFIRST, SPI_MODE0);
-//    printDetails("Right after reset/startup");
-
+    VS1053_SPI_CTL   = SPISettings( 250000, MSBFIRST, SPI_MODE0);
+    VS1053_SPI_DATA  = SPISettings(8000000, MSBFIRST, SPI_MODE0); // SPIDIV 10 -> 80/10=8.00 MHz
+    // printDetails("Right after reset/startup");
+    loadUserCode(); // load in VS1053B if you want to play flac
     // Most VS1053 modules will start up in midi mode.  The result is that there is no audio
     // when playing MP3.  You can modify the board, but there is a more elegant way:
     wram_write(0xC017, 3);                                  // GPIO DDR=3
     wram_write(0xC019, 0);                                  // GPIO ODATA=0
-
-//    printDetails("After test loop");
+    // printDetails("After test loop");
     softReset();                                            // Do a soft reset
     // Switch on the analog parts
     write_register(SCI_AUDATA, 44100 + 1);                  // 44.1kHz + stereo
     // The next clocksetting allows SPI clocking at 5 MHz, 4 MHz is safe then.
     write_register(SCI_CLOCKF, 6 << 12);                    // Normal clock settings multiplyer 3.0=12.2 MHz
-    //SPI Clock to 4 MHz. Now you can set high speed SPI clock.
-    VS1053_SPI=SPISettings(6700000, MSBFIRST, SPI_MODE0); // SPIDIV 12 -> 80/12=6.66 MHz
     write_register(SCI_MODE, _BV (SM_SDINEW) | _BV(SM_LINE1));
-    //testComm("Fast SPI, Testing VS1053 read/write registers again... \n");
+    // testComm("Fast SPI, Testing VS1053 read/write registers again... \n");
     await_data_request();
-    m_endFillByte=wram_read(0x1E06) & 0xFF;
-//    sprintf(chbuf, "endFillByte is %X", endFillByte);
-//    if(vs1053_info) vs1053_info(chbuf);
-//    printDetails("After last clocksetting \n");
-    loadUserCode(); // load in VS1053B if you want to play flac
+    m_endFillByte = wram_read(0x1E06) & 0xFF;
+    //  printDetails("After last clocksetting \n");
+    startSong();
 }
 //---------------------------------------------------------------------------------------------------------------------
 size_t VS1053::bufferFilled(){
@@ -386,12 +381,10 @@ void VS1053::stopSong()
     sdi_send_fillers(2052);
     delay(10);
     write_register(SCI_MODE, _BV (SM_SDINEW) | _BV(SM_CANCEL));
-    for(i=0; i < 200; i++)
-            {
+    for(i=0; i < 200; i++) {
         sdi_send_fillers(32);
-        modereg=read_register(SCI_MODE);  // Read status
-        if((modereg & _BV(SM_CANCEL)) == 0)
-                {
+        modereg = read_register(SCI_MODE);  // Read status
+        if((modereg & _BV(SM_CANCEL)) == 0) {
             sdi_send_fillers(2052);
             sprintf(chbuf, "Song stopped correctly after %d msec", i * 10);
             if(vs1053_info) vs1053_info(chbuf);
@@ -400,13 +393,13 @@ void VS1053::stopSong()
         delay(10);
     }
     if(vs1053_info) vs1053_info("Song stopped incorrectly!");
-    printDetails("after sond stopped incorrectly");
+    printDetails("after song stopped incorrectly");
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::softReset()
 {
     write_register(SCI_MODE, _BV (SM_SDINEW) | _BV(SM_RESET));
-    delay(10);
+    delay(100);
     await_data_request();
 }
 //---------------------------------------------------------------------------------------------------------------------
