@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 16.2022
+ *  Updated on: Aug 18.2022
  *      Author: Wolle
  */
 
@@ -118,8 +118,8 @@ private:
     std::vector<uint32_t> m_hashQueue;
 
 private:
-    enum : int { AUDIO_NONE, HTTP_RESPONSE_HEADER , AUDIO_DATA, AUDIO_LOCALFILE, AUDIO_METADATA, AUDIO_PLAYLISTINIT,
-                 AUDIO_PLAYLISTHEADER,  AUDIO_PLAYLISTDATA, VS1053_SWM, VS1053_OGG};
+    enum : int { AUDIO_NONE, HTTP_RESPONSE_HEADER , AUDIO_DATA, AUDIO_LOCALFILE, AUDIO_PLAYLISTINIT,
+                 AUDIO_PLAYLISTDATA};
     enum : int { FORMAT_NONE = 0, FORMAT_M3U = 1, FORMAT_PLS = 2, FORMAT_ASX = 3, FORMAT_M3U8 = 4};
 
     enum : int { CODEC_NONE, CODEC_WAV, CODEC_MP3, CODEC_AAC, CODEC_M4A, CODEC_FLAC, CODEC_OGG,
@@ -179,7 +179,7 @@ private:
     bool            m_f_chunked = false ;           // Station provides chunked transfer
     bool            m_f_ctseen=false;               // First line of header seen or not
     bool            m_f_firstchunk=true;            // First chunk as input
-    bool            m_f_swm = true;                 // Stream without metadata
+    bool            m_f_metadata = false;           // Stream without metadata
     bool            m_f_tts = false;                // text to speech
     bool            m_f_Log = false;                // set in platformio.ini  -DAUDIO_LOG and -DCORE_DEBUG_LEVEL=3 or 4
     bool            m_f_continue = false;           // next m3u8 chunk is available
@@ -198,11 +198,9 @@ private:
     uint16_t        m_streamUrlHash = 0;            // remember streamURL, ignore multiple occurence in metadata
     uint16_t        m_timeout_ms = 250;
     uint16_t        m_timeout_ms_ssl = 2700;
-    int             m_metacount=0;                  // Number of bytes in metadata
+    uint32_t        m_metacount=0;                  // Number of bytes in metadata
     int             m_controlCounter = 0;           // Status within readID3data() and readWaveHeader()
-    bool            m_firstmetabyte=false;          // True if first metabyte (counter)
     bool            m_f_running = false;
-    bool            m_f_localfile = false ;         // Play from local mp3-file
     bool            m_f_webstream = false ;         // Play from URL
     bool            m_f_ogg=false;                  // Set if oggstream
     bool            m_f_stream_ready=false;         // Set after connecttohost and first streamdata are available
@@ -241,7 +239,9 @@ protected:
     void     showID3Tag(const char* tag, const char* value);
     void     processLocalFile();
     void     processWebStream();
-    size_t   chunkedDataTransfer();
+    void     processWebFile();
+    void     playAudioData();
+    size_t   chunkedDataTransfer(uint8_t* bytes);
     bool     readPlayListData();
     const char* parsePlaylist_M3U();
     const char* parsePlaylist_PLS();
@@ -250,7 +250,7 @@ protected:
     bool     parseContentType(char* ct);
     bool     latinToUTF8(char* buff, size_t bufflen);
     bool     parseHttpResponseHeader();
-    bool     readMetadata(uint8_t b, bool first = false);
+    uint16_t readMetadata(uint32_t maxBytes, bool first = false);
     void     UTF8toASCII(char* str);
     void     unicode2utf8(char* buff, uint32_t len);
     void     setDefaults();
