@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 18.2022
+ *  Updated on: Aug 21.2022
  *      Author: Wolle
  */
 
@@ -702,14 +702,14 @@ void VS1053::processWebStream() {
     if(getDatamode() != AUDIO_DATA) return;              // guard
     uint32_t availableBytes = _client->available();      // available from stream
     // chunked data tramsfer - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if(m_f_chunked){
+    if(m_f_chunked && availableBytes){
         uint8_t readedBytes = 0;
         if(!chunkSize) chunkSize = chunkedDataTransfer(&readedBytes);
         availableBytes = min(availableBytes, chunkSize);
     }
     // we have metadata  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if(m_f_metadata){
-        if(availableBytes) if(m_metacount == 0) {chunkSize -= readMetadata(availableBytes); return;}
+    if(m_f_metadata && availableBytes){
+        if(m_metacount == 0) {chunkSize -= readMetadata(availableBytes); return;}
         availableBytes = min(availableBytes, m_metacount);
     }
     // timer, triggers every second  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
