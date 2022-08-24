@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 18.2022
+ *  Updated on: Aug 24.2022
  *      Author: Wolle
  */
 
@@ -186,6 +186,7 @@ private:
     bool            m_f_ts = true;                  // transport stream
     bool            m_f_webfile = false;
     bool            m_f_firstCall = false;          // InitSequence for processWebstream and processLokalFile
+    bool            m_f_m3u8data = false;           // used in processM3U8entries
     int             m_LFcount;                      // Detection of end of header
     uint32_t        m_chunkcount = 0 ;              // Counter for chunked transfer
     uint32_t        m_contentlength = 0;
@@ -199,6 +200,7 @@ private:
     uint16_t        m_timeout_ms = 250;
     uint16_t        m_timeout_ms_ssl = 2700;
     uint32_t        m_metacount=0;                  // Number of bytes in metadata
+    uint16_t        m_m3u8_targetDuration = 10;     //
     int             m_controlCounter = 0;           // Status within readID3data() and readWaveHeader()
     bool            m_f_running = false;
     bool            m_f_webstream = false ;         // Play from URL
@@ -244,24 +246,31 @@ protected:
     void     urlencode(char* buff, uint16_t buffLen, bool spacesOnly = false);
     int      read_MP3_Header(uint8_t *data, size_t len);
     void     showID3Tag(const char* tag, const char* value);
+    bool     httpPrint(const char* host);
     void     processLocalFile();
     void     processWebStream();
+    void     processWebStreamTS();
+    void     processWebStreamHLS();
     void     processWebFile();
     void     playAudioData();
-    size_t   chunkedDataTransfer(uint8_t* bytes);
     bool     readPlayListData();
     const char* parsePlaylist_M3U();
     const char* parsePlaylist_PLS();
     const char* parsePlaylist_ASX();
-//    const char* parsePlaylist_M3U8();
+    const char* parsePlaylist_M3U8();
+    bool     STfromEXTINF(char* str);
+    size_t   process_m3u8_ID3_Header(uint8_t* packet);
     bool     parseContentType(char* ct);
     bool     latinToUTF8(char* buff, size_t bufflen);
     bool     parseHttpResponseHeader();
-    uint16_t readMetadata(uint32_t maxBytes, bool first = false);
     void     UTF8toASCII(char* str);
     void     unicode2utf8(char* buff, uint32_t len);
     void     setDefaults();
-    void     loadUserCode();
+    bool     ts_parsePacket(uint8_t* packet, uint8_t* packetStart, uint8_t* packetLength);
+    uint16_t readMetadata(uint16_t maxBytes, bool first = false);
+    size_t   chunkedDataTransfer(uint8_t* bytes);
+    bool     readID3V1Tag();
+    void     slowStreamDetection(uint32_t inBuffFilled, uint32_t maxFrameSize);
 
 public:
     // Constructor.  Only sets pin values.  Doesn't touch the chip.  Be sure to call begin()!
@@ -292,6 +301,7 @@ public:
     bool     setFilePos(uint32_t pos);
     size_t   bufferFilled();
     size_t   bufferFree();
+    void     loadUserCode();
 
     // implement several function with respect to the index of string
     bool startsWith (const char* base, const char* str) { return (strstr(base, str) - base) == 0;}
@@ -408,6 +418,16 @@ public:
         vec.clear();
         vec.shrink_to_fit();
     }
+
+    uint32_t simpleHash(const char* str){
+        if(str == NULL) return 0;
+        uint32_t hash = 0;
+        for(int i=0; i<strlen(str); i++){
+		    if(str[i] < 32) continue; // ignore control sign
+		    hash += (str[i] - 31) * i * 32;
+        }
+        return hash;
+	}
 
     inline uint8_t  getDatamode(){return m_datamode;}
     inline void     setDatamode(uint8_t dm){m_datamode=dm;}
