@@ -33,13 +33,17 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED) delay(1500);
     mp3.begin();
     mp3.setVolume(volume);
-    //mp3.connecttohost("streambbr.ir-media-tec.com/berlin/mp3-128/vtuner_web_mp3/");
-    //mp3.connecttohost("stream.landeswelle.de/lwt/mp3-192"); // mp3 192kb/s
-    //mp3.connecttohost("listen.ai-radio.org:8000/320.ogg?cc=DE&now=1511557873.987&");  // ogg
-    //mp3.connecttohost("tophits.radiomonster.fm/320.mp3");  //bitrate 320k
-    mp3.connecttohost("hellwegradiowest.radiovonhier.de/high/stream.mp3"); // Transfer Encoding: chunked
-    //mp3.connecttohost("https://icecast.omroepvenray.nl/lov.mp3"); // ssl
-    //mp3.connecttoSD("320k_test.mp3"); // SD card
+    mp3.connecttohost("streambbr.ir-media-tec.com/berlin/mp3-128/vtuner_web_mp3/");
+    //mp3.connecttohost("stream.landeswelle.de/lwt/mp3-192");                 // mp3 192kb/s
+    //mp3.connecttohost("http://radio.hear.fi:8000/hear.ogg");                // ogg
+    //mp3.connecttohost("tophits.radiomonster.fm/320.mp3");                   // bitrate 320k
+    //mp3.connecttohost("http://star.jointil.net/proxy/jrn_beat?mp=/stream"); // chunked data transfer
+    //mp3.connecttohost("http://stream.srg-ssr.ch/rsp/aacp_48.asx");          // asx
+    //mp3.connecttohost("www.surfmusic.de/m3u/100-5-das-hitradio,4529.m3u");  // m3u
+    //mp3.connecttohost("https://raw.githubusercontent.com/schreibfaul1/ESP32-audioI2S/master/additional_info/Testfiles/Pink-Panther.wav"); // webfile
+    //mp3.connecttohost("http://stream.revma.ihrhls.com/zc5060/hls.m3u8");    // HLS
+    //mp3.connecttohost("https://mirchiplaylive.akamaized.net/hls/live/2036929/MUM/MEETHI_Auto.m3u8"); // HLS transport stream
+    //mp3.connecttoFS(SD, "320k_test.mp3"); // SD card, local file
     //mp3.connecttospeech("Wenn die Hunde schlafen, kann der Wolf gut Schafe stehlen.", "de");
 }
 
