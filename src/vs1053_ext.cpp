@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Oct 19.2022
+ *  Updated on: Oct 20.2022
  *      Author: Wolle
  */
 
@@ -814,7 +814,6 @@ void VS1053::processWebStreamTS() {
     static bool     f_tmr_1s;
     static bool     f_stream;                                   // first audio data received
     static bool     f_firstPacket;
-    static int      bytesDecoded;
     static uint32_t byteCounter;                                // count received data
     static uint32_t tmr_1s;                                     // timer 1 sec
     static uint32_t loopCnt;                                    // count loops if clientbuffer is empty
@@ -830,7 +829,6 @@ void VS1053::processWebStreamTS() {
         f_stream = false;
         f_firstPacket = true;
         byteCounter = 0;
-        bytesDecoded = 0;
         chunkSize = 0;
         loopCnt = 0;
         tmr_1s = millis();
@@ -948,7 +946,6 @@ void VS1053::processWebStreamHLS() {
     uint32_t        availableBytes;                             // available bytes in stream
     static bool     f_tmr_1s;
     static bool     f_stream;                                   // first audio data received
-    static int      bytesDecoded;
     static bool     firstBytes;
     static uint32_t byteCounter;                                // count received data
     static size_t   chunkSize = 0;
@@ -963,7 +960,6 @@ void VS1053::processWebStreamHLS() {
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
         f_stream = false;
         byteCounter = 0;
-        bytesDecoded = 0;
         chunkSize = 0;
         loopCnt = 0;
         ID3WritePtr = 0;
@@ -1381,7 +1377,6 @@ const char* VS1053::parsePlaylist_M3U(){
         // AUDIO_INFO("Entry in playlist found: %s", pl);
         pos = indexOf(m_playlistContent[i], "http", 0);                 // Search for "http"
         if(pos >= 0) {                                                  // Does URL contain "http://"?
-    //    log_e("%s pos=%i", m_playlistContent[i], pos);
             host = m_playlistContent[i] + pos;                        // Yes, set new host
             break;
         }
@@ -1499,7 +1494,8 @@ const char* VS1053::parsePlaylist_M3U8(){
             if(startsWith(m_playlistContent[i],"#EXT-X-STREAM-INF:")){
                 if(occurence > 0) break; // no more than one #EXT-X-STREAM-INF: (can have different BANDWIDTH)
                 occurence++;
-                if(!endsWith(m_playlistContent[i+1], "m3u8")){ // we have a new m3u8 playlist, skip to next line
+                if((!endsWith(m_playlistContent[i+1], "m3u8" ) && indexOf(m_playlistContent[i+1], "m3u8?") == -1)){
+                    // we have a new m3u8 playlist, skip to next line
                     int pos = indexOf(m_playlistContent[i], "CODECS=\"mp4a", 18);
                     // 'mp4a.40.01' AAC Main
                     // 'mp4a.40.02' AAC LC (Low Complexity)
@@ -1668,10 +1664,10 @@ size_t VS1053::process_m3u8_ID3_Header(uint8_t* packet){
     uint8_t         ID3version;
     size_t          id3Size;
     bool            m_f_unsync = false, m_f_exthdr = false;
-    static uint64_t last_timestamp;  // remember the last timestamp
-    static uint32_t lastSampleRate;
     uint64_t        current_timestamp = 0;
-    uint32_t        newSampleRate = 0;
+
+    (void) m_f_unsync;        // [-Wunused-but-set-variable]
+    (void) current_timestamp; // [-Wunused-but-set-variable]
 
     if(specialIndexOf(packet, "ID3", 4) != 0) { // ID3 not found
         if(m_f_Log) log_i("m3u8 file has no mp3 tag");
@@ -2010,7 +2006,7 @@ bool VS1053::parseContentType(char* ct) {
     else if(!strcmp(ct, "audio/scpls"))      ct_val = CT_PLS;
     else if(!strcmp(ct, "audio/x-scpls"))    ct_val = CT_PLS;
     else if(!strcmp(ct, "application/pls+xml")) ct_val = CT_PLS;
-    else if(!strcmp(ct, "audio/mpegurl"))    ct_val = CT_M3U;
+    else if(!strcmp(ct, "audio/mpegurl"))   {ct_val = CT_M3U; if(m_expectedPlsFmt == FORMAT_M3U8) ct_val = CT_M3U8;}
     else if(!strcmp(ct, "audio/x-mpegurl"))  ct_val = CT_M3U;
     else if(!strcmp(ct, "audio/ms-asf"))     ct_val = CT_ASX;
     else if(!strcmp(ct, "video/x-ms-asf"))   ct_val = CT_ASX;
@@ -3074,6 +3070,8 @@ bool VS1053::ts_parsePacket(uint8_t* packet, uint8_t* packetStart, uint8_t* pack
     const uint8_t PAYLOAD_SIZE = 184;
     const uint8_t PID_ARRAY_LEN = 4;
 
+    (void) PAYLOAD_SIZE; //  [-Wunused-variable]
+
     typedef struct{
         int number= 0;
         int pids[PID_ARRAY_LEN];
@@ -3207,7 +3205,7 @@ bool VS1053::ts_parsePacket(uint8_t* packet, uint8_t* packetStart, uint8_t* pack
         }
         *packetStart = 0;
         *packetLength = 0;
-        log_e("PES not found");
+        if(m_f_Log) log_i("PES not found");
         return false;
     }
     else if(pidsOfPMT.number) {
@@ -3301,6 +3299,7 @@ uint16_t VS1053::readMetadata(uint16_t maxBytes, bool first) {
 }
 //----------------------------------------------------------------------------------------------------------------------
 size_t VS1053::chunkedDataTransfer(uint8_t* bytes){
+    uint8_t byteCounter = 0;
     size_t chunksize = 0;
     int b = 0;
     uint32_t ctime = millis();
@@ -3312,7 +3311,7 @@ size_t VS1053::chunkedDataTransfer(uint8_t* bytes){
             return 0;
         }
         b = _client->read();
-        *bytes++;
+        byteCounter++;
         if(b < 0) continue;  // -1 no data available
         if(b == '\n') break;
         if(b < '0') continue;
@@ -3322,6 +3321,7 @@ size_t VS1053::chunkedDataTransfer(uint8_t* bytes){
         chunksize = (chunksize << 4) + b;
     }
     if(m_f_Log) log_i("chunksize %d", chunksize);
+    *bytes = byteCounter;
     return chunksize;
 }
 //----------------------------------------------------------------------------------------------------------------------
