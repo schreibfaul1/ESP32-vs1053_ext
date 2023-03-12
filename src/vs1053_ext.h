@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Dec 05.2022
+ *  Updated on: Mar 12.2023
  *      Author: Wolle
  */
 
@@ -160,7 +160,8 @@ private:
     SPIClass*       spi_VS1053 = NULL;
     SPISettings     VS1053_SPI;
 
-    char            chbuf[512];
+    char*           m_chbuf = NULL;
+    uint16_t        m_chbufSize = 0;                // will set in constructor (depending on PSRAM)
     char            m_lastHost[256];                // Store the last URL to a webstream
     char*           m_playlistBuff = NULL;          // stores playlistdata
     uint8_t         m_codec = CODEC_NONE;           //
