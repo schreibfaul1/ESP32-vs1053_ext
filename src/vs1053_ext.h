@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Mar 12.2023
+ *  Updated on: Apr 08.2023
  *      Author: Wolle
  */
 
@@ -245,7 +245,7 @@ protected:
     void     stopSong() ;                                // Finish playing a song. Call this after
                                                          // the last playChunk call.
     void     urlencode(char* buff, uint16_t buffLen, bool spacesOnly = false);
-    int      read_MP3_Header(uint8_t *data, size_t len);
+    int      read_ID3_Header(uint8_t *data, size_t len);
     void     showID3Tag(const char* tag, const char* value);
     bool     httpPrint(const char* host);
     void     processLocalFile();
@@ -271,7 +271,7 @@ protected:
     uint16_t readMetadata(uint16_t maxBytes, bool first = false);
     size_t   chunkedDataTransfer(uint8_t* bytes);
     bool     readID3V1Tag();
-    void     slowStreamDetection(uint32_t inBuffFilled, uint32_t maxFrameSize);
+    boolean  streamDetection(uint32_t bytesAvail);
 
 public:
     // Constructor.  Only sets pin values.  Doesn't touch the chip.  Be sure to call begin()!

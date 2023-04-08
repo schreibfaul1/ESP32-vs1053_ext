@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Mar 12.2023
+ *  Updated on: Apr 08.2023
  *      Author: Wolle
  */
 
@@ -655,7 +655,7 @@ void VS1053::processLocalFile() {
                 m_controlCounter = 100;
             }
             if(m_codec == CODEC_MP3){
-                int res = read_MP3_Header(InBuff.getReadPtr(), bytesCanBeRead);
+                int res = read_ID3_Header(InBuff.getReadPtr(), bytesCanBeRead);
                 if(res >= 0) bytesDecoded = res;
                 else{ // error, skip header
                     m_controlCounter = 100;
@@ -818,12 +818,9 @@ void VS1053::processWebStreamTS() {
 
     const uint16_t  maxFrameSize = InBuff.getMaxBlockSize();    // every mp3/aac frame is not bigger
     uint32_t        availableBytes;                             // available bytes in stream
-    static bool     f_tmr_1s;
     static bool     f_stream;                                   // first audio data received
     static bool     f_firstPacket;
     static uint32_t byteCounter;                                // count received data
-    static uint32_t tmr_1s;                                     // timer 1 sec
-    static uint32_t loopCnt;                                    // count loops if clientbuffer is empty
     static uint8_t  ts_packet[188];                             // m3u8 transport stream is 188 bytes long
     uint8_t         ts_packetStart = 0;
     uint8_t         ts_packetLength = 0;
@@ -837,8 +834,6 @@ void VS1053::processWebStreamTS() {
         f_firstPacket = true;
         byteCounter = 0;
         chunkSize = 0;
-        loopCnt = 0;
-        tmr_1s = millis();
         m_t0 = millis();
         ts_packetPtr = 0;
         m_controlCounter = 0;
@@ -897,34 +892,10 @@ void VS1053::processWebStreamTS() {
 
     }
 
-    // timer, triggers every second - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if((tmr_1s + 1000) < millis()) {
-        f_tmr_1s = true;                                        // flag will be set every second for one loop only
-        tmr_1s = millis();
+    // if the buffer is often almost empty issue a warning - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    if(f_stream){
+        if(streamDetection(availableBytes)) return;
     }
-
-    // if the buffer is often almost empty issue a warning  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if(InBuff.bufferFilled() < maxFrameSize && f_stream){
-        static uint8_t cnt_slow = 0;
-        cnt_slow ++;
-        if(f_tmr_1s) {
-            if(cnt_slow > 50 && vs1053_info) vs1053_info("slow stream, dropouts are possible");
-            f_tmr_1s = false;
-            cnt_slow = 0;
-        }
-    }
-
-    // if the buffer can't filled for several seconds try a new connection  - - - - - - - - - - - - - - - - - - - - - -
-    if(f_stream && !availableBytes){
-        loopCnt++;
-        if(loopCnt > 200000) {              // wait several seconds
-            loopCnt = 0;
-            AUDIO_INFO("Stream lost -> try new connection");
-            httpPrint(m_lastHost);
-            return;
-        }
-    }
-    if(availableBytes) loopCnt = 0;
 
     // buffer fill routine  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(true) { // statement has no effect
@@ -941,37 +912,31 @@ void VS1053::processWebStreamTS() {
     if(f_stream){
         static uint8_t cnt = 0;
         cnt++;
-        if(cnt == 6){playAudioData(); cnt = 0;}
+        if(cnt == 3){playAudioData(); cnt = 0;} // aac only
     }
     return;
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::processWebStreamHLS() {
 
-    const uint16_t  maxFrameSize = InBuff.getMaxBlockSize();    // every mp3/aac frame is not bigger
+   const uint16_t  maxFrameSize = InBuff.getMaxBlockSize();    // every mp3/aac frame is not bigger
     const uint16_t  ID3BuffSize = 1024;
     uint32_t        availableBytes;                             // available bytes in stream
-    static bool     f_tmr_1s;
     static bool     f_stream;                                   // first audio data received
     static bool     firstBytes;
     static uint32_t byteCounter;                                // count received data
     static size_t   chunkSize = 0;
-    static uint32_t tmr_1s;                                     // timer 1 sec
-    static uint32_t loopCnt;                                    // count loops if clientbuffer is empty
     static uint16_t ID3WritePtr;
     static uint16_t ID3ReadPtr;
     static uint8_t* ID3Buff;
-
 
     // first call, set some values to default - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
         f_stream = false;
         byteCounter = 0;
         chunkSize = 0;
-        loopCnt = 0;
         ID3WritePtr = 0;
         ID3ReadPtr = 0;
-        tmr_1s = millis();
         m_t0 = millis();
         m_f_firstCall = false;
         firstBytes = true;
@@ -982,7 +947,7 @@ void VS1053::processWebStreamHLS() {
     if(getDatamode() != AUDIO_DATA) return;        // guard
 
     availableBytes = _client->available();
-    if(availableBytes){
+    if(availableBytes){ // an ID3 header could come here
         uint8_t readedBytes = 0;
 
         if(m_f_chunked && !chunkSize) {chunkSize = chunkedDataTransfer(&readedBytes); byteCounter += readedBytes;}
@@ -993,7 +958,7 @@ void VS1053::processWebStreamHLS() {
                 return;
             }
             if(m_controlCounter < 100){
-                int res = read_MP3_Header(&ID3Buff[ID3ReadPtr], ID3BuffSize - ID3ReadPtr);
+                int res = read_ID3_Header(&ID3Buff[ID3ReadPtr], ID3BuffSize - ID3ReadPtr);
                 if(res >= 0) ID3ReadPtr += res;
                 if(ID3ReadPtr > ID3BuffSize) {log_e("buffer overflow"); stopSong(); return;}
                 return;
@@ -1033,34 +998,10 @@ void VS1053::processWebStreamHLS() {
         }
     }
 
-    // timer, triggers every second - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if((tmr_1s + 1000) < millis()) {
-        f_tmr_1s = true;                                        // flag will be set every second for one loop only
-        tmr_1s = millis();
+    // if the buffer is often almost empty issue a warning or try a new connection - - - - - - - - - - - - - - - - - - -
+    if(f_stream){
+        if(streamDetection(availableBytes)) return;
     }
-
-    // if the buffer is often almost empty issue a warning  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if(InBuff.bufferFilled() < maxFrameSize && f_stream){
-        static uint8_t cnt_slow = 0;
-        cnt_slow ++;
-        if(f_tmr_1s) {
-            if(cnt_slow > 50) AUDIO_INFO("slow stream, dropouts are possible");
-            f_tmr_1s = false;
-            cnt_slow = 0;
-        }
-    }
-
-    // if the buffer can't filled for several seconds try a new connection  - - - - - - - - - - - - - - - - - - - - - -
-    if(f_stream && !availableBytes){
-        loopCnt++;
-        if(loopCnt > 200000) {              // wait several seconds
-            loopCnt = 0;
-            AUDIO_INFO("Stream lost -> try new connection");
-            httpPrint(m_lastHost);
-            return;
-        }
-    }
-    if(availableBytes) loopCnt = 0;
 
     if(InBuff.bufferFilled() > maxFrameSize && !f_stream) {  // waiting for buffer filled
         f_stream = true;  // ready to play the audio data
@@ -1073,7 +1014,7 @@ void VS1053::processWebStreamHLS() {
     if(f_stream){
         static uint8_t cnt = 0;
         cnt++;
-        if(cnt == 1){playAudioData(); cnt = 0;}
+        if(cnt == 3){playAudioData(); cnt = 0;} // aac only
     }
     return;
 }
@@ -1211,7 +1152,7 @@ void VS1053::processWebFile(){
             m_controlCounter = 100;
         }
         if(m_codec == CODEC_MP3){
-            int res = read_MP3_Header(InBuff.getReadPtr(), InBuff.bufferFilled());
+            int res = read_ID3_Header(InBuff.getReadPtr(), InBuff.bufferFilled());
             if(res >= 0) bytesDecoded = res;
             else{m_controlCounter = 100;} // error, skip header
         }
@@ -1619,6 +1560,7 @@ const char* VS1053::parsePlaylist_M3U8(){
                 m_playlistURL.shrink_to_fit();
         }
         if(m_f_Log) log_i("now playing %s", m_playlistBuff);
+        if(endsWith(m_playlistBuff, "ts")) m_f_ts = true;
         return m_playlistBuff;
     }
     else{
@@ -2000,8 +1942,8 @@ bool VS1053::parseContentType(char* ct) {
 
     else if(!strcmp(ct, "audio/aac"))        ct_val = CT_AAC;
     else if(!strcmp(ct, "audio/x-aac"))      ct_val = CT_AAC;
-    else if(!strcmp(ct, "audio/aacp")){      ct_val = CT_AAC; if(m_playlistFormat == FORMAT_M3U8) m_f_ts = true;}
-    else if(!strcmp(ct, "video/mp2t")){      ct_val = CT_AAC; m_f_ts = true;} // assume AAC transport stream
+    else if(!strcmp(ct, "audio/aacp"))       ct_val = CT_AAC;
+    else if(!strcmp(ct, "video/mp2t"))       ct_val = CT_AAC;
     else if(!strcmp(ct, "audio/mp4"))        ct_val = CT_M4A;
     else if(!strcmp(ct, "audio/m4a"))        ct_val = CT_M4A;
 
@@ -2140,6 +2082,7 @@ void VS1053::setDefaults(){
     m_streamType = ST_NONE;
     m_codec = CODEC_NONE;
     m_playlistFormat = FORMAT_NONE;
+    ts_parsePacket(0, 0, 0); // reset ts routine
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::setConnectionTimeout(uint16_t timeout_ms, uint16_t timeout_ms_ssl){
@@ -2658,7 +2601,7 @@ void VS1053::unicode2utf8(char* buff, uint32_t len){
     free(tmpbuff);
 }
 //---------------------------------------------------------------------------------------------------------------------
-int VS1053::read_MP3_Header(uint8_t *data, size_t len) {
+int VS1053::read_ID3_Header(uint8_t *data, size_t len) {
 
     static size_t headerSize;
     static size_t id3Size;
@@ -3079,7 +3022,7 @@ bool VS1053::ts_parsePacket(uint8_t* packet, uint8_t* packetStart, uint8_t* pack
     const uint8_t PAYLOAD_SIZE = 184;
     const uint8_t PID_ARRAY_LEN = 4;
 
-    (void) PAYLOAD_SIZE; //  [-Wunused-variable]
+    (void) PAYLOAD_SIZE;  // suppress [-Wunused-variable]
 
     typedef struct{
         int number= 0;
@@ -3105,7 +3048,7 @@ bool VS1053::ts_parsePacket(uint8_t* packet, uint8_t* packetStart, uint8_t* pack
     //---------------------------------------------------------------------------------------------------------
     // 2. Byte           |PID|PID|PID|PID|PID|PID|PID|PID|
     //---------------------------------------------------------------------------------------------------------
-    // 3. Byte           |TSC|TSC|AFC|ADC|CC |CC |CC |CC |
+    // 3. Byte           |TSC|TSC|AFC|AFC|CC |CC |CC |CC |
     //---------------------------------------------------------------------------------------------------------
     // 4.-187. Byte      |Payload data if AFC==01 or 11  |
     //---------------------------------------------------------------------------------------------------------
@@ -3137,18 +3080,21 @@ bool VS1053::ts_parsePacket(uint8_t* packet, uint8_t* packetStart, uint8_t* pack
         if(m_f_Log) log_i("Adaptation Field Length: %d", AFL);
     }
     int PLS = PUSI ? 5 : 4;     // PayLoadStart, Payload Unit Start Indicator
+    if(AFL > 0) PLS += AFL + 1; // skip adaption field
 
     if(PID == 0) {
         // Program Association Table (PAT) - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         if(m_f_Log)  log_i("PAT");
         pidsOfPMT.number = 0;
         pidOfAAC = 0;
+
         int startOfProgramNums = 8;
         int lengthOfPATValue = 4;
         int sectionLength = ((packet[PLS + 1] & 0x0F) << 8) | (packet[PLS + 2] & 0xFF);
         if(m_f_Log) log_i("Section Length: %d", sectionLength);
         int program_number, program_map_PID;
         int indexOfPids = 0;
+        (void) program_number; // [-Wunused-but-set-variable]
         for(int i = startOfProgramNums; i <= sectionLength; i += lengthOfPATValue) {
             program_number = ((packet[PLS + i] & 0xFF) << 8) | (packet[PLS + i + 1] & 0xFF);
             program_map_PID = ((packet[PLS + i + 2] & 0x1F) << 8) | (packet[PLS + i + 3] & 0xFF);
@@ -3214,7 +3160,7 @@ bool VS1053::ts_parsePacket(uint8_t* packet, uint8_t* packetStart, uint8_t* pack
         }
         *packetStart = 0;
         *packetLength = 0;
-        if(m_f_Log) log_i("PES not found");
+        log_e("PES not found");
         return false;
     }
     else if(pidsOfPMT.number) {
@@ -3396,20 +3342,33 @@ bool VS1053::readID3V1Tag(){
     // [2] https://en.wikipedia.org/wiki/ID3#ID3v1_and_ID3v1.1[5]
 }
 //----------------------------------------------------------------------------------------------------------------------
-void VS1053::slowStreamDetection(uint32_t inBuffFilled, uint32_t maxFrameSize){
-    static uint32_t tmr_1s   = millis(); // timer 1 sec
-    static bool     f_tmr_1s = false;
+boolean VS1053::streamDetection(uint32_t bytesAvail){
+    static uint32_t tmr_slow = millis();
+    static uint32_t tmr_lost = millis();
     static uint8_t  cnt_slow = 0;
-    if(tmr_1s + 1000 < millis()) {f_tmr_1s = true; tmr_1s = millis();}
-    if(m_codec == CODEC_WAV)  maxFrameSize /= 4;
-    if(m_codec == CODEC_FLAC) maxFrameSize /= 2;
-    if(inBuffFilled < maxFrameSize){
-        cnt_slow ++;
-        if(f_tmr_1s) {
-            if(cnt_slow > 50) AUDIO_INFO("slow stream, dropouts are possible");
-            f_tmr_1s = false;
-            cnt_slow = 0;
+    static uint8_t  cnt_lost = 0;
+
+    // if within one second the content of the audio buffer falls below the size of an audio frame 100 times,
+    // issue a message
+    if(tmr_slow + 1000 < millis()){
+        tmr_slow = millis();
+        if(cnt_slow > 100) AUDIO_INFO("slow stream, dropouts are possible");
+        cnt_slow = 0;
+    }
+    if(InBuff.bufferFilled() < InBuff.getMaxBlockSize()) cnt_slow++;
+    if(bytesAvail) {tmr_lost = millis() + 1000; cnt_lost = 0;}
+    if(InBuff.bufferFilled() > InBuff.getMaxBlockSize() * 2) return false; // enough data available to play
+
+    // if no audio data is received within three seconds, a new connection attempt is started.
+    if(tmr_lost < millis()){
+        cnt_lost++;
+        tmr_lost = millis() + 1000;
+        if(cnt_lost == 5){ // 5s no data?
+            cnt_lost = 0;
+            AUDIO_INFO("Stream lost -> try new connection");
+            connecttohost(m_lastHost);
+            return true;
         }
     }
-    else cnt_slow = 0;
+    return false;
 }
