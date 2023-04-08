@@ -61,7 +61,7 @@ void setup() {
     //mp3.connecttohost("www.surfmusic.de/m3u/100-5-das-hitradio,4529.m3u");  // m3u
     //mp3.connecttohost("https://raw.githubusercontent.com/schreibfaul1/ESP32-audioI2S/master/additional_info/Testfiles/Pink-Panther.wav"); // webfile
     //mp3.connecttohost("http://stream.revma.ihrhls.com/zc5060/hls.m3u8");    // HLS
-    //mp3.connecttohost("https://mirchiplaylive.akamaized.net/hls/live/2036929/MUM/MEETHI_Auto.m3u8"); // HLS transport stream
+    //mp3.connecttohost("https://live-cdn.sr.se/pool2/p2musik/p2musik.isml/p2musik-audio=192000.m3u8"); // HLS transport stream
     //mp3.connecttoFS(SD, "320k_test.mp3"); // SD card, local file
     //mp3.connecttospeech("Wenn die Hunde schlafen, kann der Wolf gut Schafe stehlen.", "de");
 }
