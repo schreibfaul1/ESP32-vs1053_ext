@@ -1021,8 +1021,7 @@ void VS1053::processWebStreamHLS() {
     if(f_stream){
         static uint8_t cnt = 0;
         cnt++;
-        if(cnt == 1){playAudioData(); } // aac only
-        if(cnt == 1){playAudioData(); playAudioData(); cnt = 0;} // aac only
+        if(cnt == 1){playAudioData(); cnt = 0;} // aac only
     }
     return;
 }
