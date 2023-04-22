@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Apr 08.2023
+ *  Updated on: Apr 22.2023
  *      Author: Wolle
  */
 
@@ -158,7 +158,7 @@ VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, uint8_t spi
 
     clientsecure.setInsecure();                 // update to ESP32 Arduino version 1.0.5-rc05 or higher
     m_endFillByte=0;
-    curvol=50;
+    m_vol=50;
     m_LFcount=0;
 }
 VS1053::~VS1053(){
@@ -340,22 +340,23 @@ size_t VS1053::bufferFree(){
     return InBuff.freeSpace();
 }
 //---------------------------------------------------------------------------------------------------------------------
-
-void VS1053::setVolume(uint8_t vol){
-    // Set volume.  Both left and right.
-    // Input value is 0..21.  21 is the loudest.
-    // Clicking reduced by using 0xf8 to 0x00 as limits.
-    uint16_t value;                                         // Value to send to SCI_VOL
-
-    if(vol > 21) vol=21;
-
-    if(vol != curvol){
-        curvol = vol;                                       // #20
-        vol=volumetable[vol];                               // Save for later use
-        value=map(vol, 0, 100, 0xF8, 0x00);                 // 0..100% to one channel
-        value=(value << 8) | value;
-        write_register(SCI_VOL, value);                     // Volume left and right
-    }
+void VS1053::setVolumeSteps(uint8_t steps) {
+    if(!steps) steps = 1;  // 0 is nonsense
+    m_vol_steps = steps;
+}
+//---------------------------------------------------------------------------------------------------------------------
+uint8_t VS1053::maxVolume() {
+        return m_vol_steps;
+};
+//---------------------------------------------------------------------------------------------------------------------
+void VS1053::setVolume(uint8_t vol){ // Set volume.  Both left and right.
+    if (vol > m_vol_steps) vol = m_vol_steps;
+    m_vol = vol;
+    uint8_t v1 = map(m_vol, 0, m_vol_steps, 0x01, 0xFF);
+    uint8_t v2 = 0xFF - ((float)log(v1) *46);               // ln(1) = 0
+                                                            // ln(255) * 46 = 254.89..
+    uint16_t value = (uint16_t)(v2 << 8) | v2;
+    write_register(SCI_VOL, value);                         // Volume left and right
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::setTone(uint8_t *rtone){                       // Set bass/treble (4 nibbles)
@@ -372,7 +373,7 @@ void VS1053::setTone(uint8_t *rtone){                       // Set bass/treble (
 }
 //---------------------------------------------------------------------------------------------------------------------
 uint8_t VS1053::getVolume(){                                // Get the currenet volume setting.
-    return curvol;
+    return m_vol;
 }
 //----------------------------------------------------------------------------------------------------------------------
 void VS1053::startSong(){
@@ -461,6 +462,11 @@ uint32_t VS1053::printChipID(){
     chipID =  wram_read(0x1E00) << 16;
     chipID += wram_read(0x1E01);
     return chipID;
+}
+//---------------------------------------------------------------------------------------------------------------------
+
+uint32_t VS1053::getBitRate(){
+    return (wram_read(0x1e05) & 0xFF) * 1000;  // Kbit/s => bit/s
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::showstreamtitle(const char* ml) {
@@ -693,6 +699,7 @@ void VS1053::processLocalFile() {
         if(bytesDecoded > 0) {InBuff.bytesWasRead(bytesDecoded);}
         return;
     }
+
     if(!bytesAddedToBuffer) {  // eof
         bytesCanBeRead = InBuff.bufferFilled();
         if(bytesCanBeRead > 200){
@@ -912,7 +919,7 @@ void VS1053::processWebStreamTS() {
     if(f_stream){
         static uint8_t cnt = 0;
         cnt++;
-        if(cnt == 3){playAudioData(); cnt = 0;} // aac only
+        if(cnt == 1){playAudioData(); cnt = 0;} // aac only
     }
     return;
 }
@@ -1014,7 +1021,8 @@ void VS1053::processWebStreamHLS() {
     if(f_stream){
         static uint8_t cnt = 0;
         cnt++;
-        if(cnt == 3){playAudioData(); cnt = 0;} // aac only
+        if(cnt == 1){playAudioData(); } // aac only
+        if(cnt == 1){playAudioData(); playAudioData(); cnt = 0;} // aac only
     }
     return;
 }
