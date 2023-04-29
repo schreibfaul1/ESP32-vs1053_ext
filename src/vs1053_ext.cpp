@@ -272,10 +272,10 @@ void VS1053::sdi_send_buffer(uint8_t* data, size_t len)
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::sdi_send_fillers(size_t len){
 
-    size_t chunk_length;                                    // Length of chunk 32 byte or shorter
+    size_t chunk_length = 0;                                // Length of chunk 32 byte or shorter
 
     data_mode_on();
-    while(len) {                                             // More to do?
+    while(len) {                                            // More to do?
         await_data_request();                               // Wait for space available
          if(len >0){
             chunk_length = min((size_t)vs1053_chunk_size, len);
