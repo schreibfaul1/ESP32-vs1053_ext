@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Apr 22.2023
+ *  Updated on: May 11.2023
  *      Author: Wolle
  */
 
@@ -158,7 +158,7 @@ VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, uint8_t spi
 
     clientsecure.setInsecure();                 // update to ESP32 Arduino version 1.0.5-rc05 or higher
     m_endFillByte=0;
-    m_vol=50;
+    m_vol = 20;
     m_LFcount=0;
 }
 VS1053::~VS1053(){
@@ -634,6 +634,7 @@ void VS1053::processLocalFile() {
     }
 
     bytesCanBeWritten = InBuff.writeSpace();
+
     //----------------------------------------------------------------------------------------------------
     // some files contain further data after the audio block (e.g. pictures).
     // In that case, the end of the audio block is not the end of the file. An 'eof' has to be forced.
@@ -648,7 +649,6 @@ void VS1053::processLocalFile() {
     if(bytesAddedToBuffer > 0) {
         InBuff.bytesWritten(bytesAddedToBuffer);
     }
-
 
     if(bytesAddedToBuffer == -1) bytesAddedToBuffer = 0; // read error? eof?
     bytesCanBeRead = InBuff.bufferFilled();
@@ -743,27 +743,21 @@ void VS1053::processLocalFile() {
 void VS1053::processWebStream() {
 
     const uint16_t  maxFrameSize = InBuff.getMaxBlockSize();    // every mp3/aac frame is not bigger
-    static bool     f_tmr_1s;
     static bool     f_stream;                                   // first audio data received
-    static uint8_t  cnt_slow;
     static uint32_t chunkSize;                                  // chunkcount read from stream
-    static uint32_t tmr_1s;                                     // timer 1 sec
-    static uint32_t loopCnt;                                    // count loops if clientbuffer is empty
 
     // first call, set some values to default  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
         m_f_firstCall = false;
         f_stream = false;
-        cnt_slow = 0;
         chunkSize = 0;
-        loopCnt = 0;
-        tmr_1s = millis();
         m_metacount = m_metaint;
         readMetadata(0, true); // reset all static vars
     }
 
     if(getDatamode() != AUDIO_DATA) return;              // guard
     uint32_t availableBytes = _client->available();      // available from stream
+
     // chunked data tramsfer - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_chunked && availableBytes){
         uint8_t readedBytes = 0;
@@ -775,26 +769,12 @@ void VS1053::processWebStream() {
         if(m_metacount == 0) {chunkSize -= readMetadata(availableBytes); return;}
         availableBytes = min(availableBytes, m_metacount);
     }
-    // timer, triggers every second  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if((tmr_1s + 1000) < millis()) {
-        f_tmr_1s = true;                                        // flag will be set every second for one loop only
-        tmr_1s = millis();
-    }
+
     // if the buffer is often almost empty issue a warning - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    if(InBuff.bufferFilled() > maxFrameSize) {f_tmr_1s = false; cnt_slow = 0; loopCnt = 0;}
-    if(f_tmr_1s){
-        cnt_slow ++;
-        if(cnt_slow > 50){cnt_slow = 0; AUDIO_INFO("slow stream, dropouts are possible");}
+    if(f_stream){
+        if(streamDetection(availableBytes)) return;
     }
-    // if the buffer can't filled for several seconds try a new connection - - - - - - - - - - - - - - - - - - - - - - -
-    if(f_stream && !availableBytes){
-        loopCnt++;
-        if(loopCnt > 200000) {              // wait several seconds
-            AUDIO_INFO("Stream lost -> try new connection");
-            connecttohost(m_lastHost);
-            return;
-        }
-    }
+
     // buffer fill routine - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(availableBytes) {
         availableBytes = min(availableBytes, InBuff.writeSpace());

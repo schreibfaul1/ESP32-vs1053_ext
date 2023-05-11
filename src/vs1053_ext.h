@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Apr 22.2023
+ *  Updated on: May 11.2023
  *      Author: Wolle
  */
 
@@ -88,12 +88,12 @@ public:
 
 protected:
     const size_t m_buffSizePSRAM    = 300000;   // most webstreams limit the advance to 100...300Kbytes
-    const size_t m_buffSizeRAM      = 1600 * 10;
+    const size_t m_buffSizeRAM      = 1600 * 5;
     size_t       m_buffSize         = 0;
     size_t       m_freeSpace        = 0;
     size_t       m_writeSpace       = 0;
     size_t       m_dataLength       = 0;
-    size_t       m_resBuffSizeRAM   = 4096;     // reserved buffspace, >= one mp3  frame
+    size_t       m_resBuffSizeRAM   = 1600;     // reserved buffspace, >= one mp3  frame
     size_t       m_resBuffSizePSRAM = 4096;
     size_t       m_maxBlockSize     = 1600;
     uint8_t*     m_buffer           = NULL;
