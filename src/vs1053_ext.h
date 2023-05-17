@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: May 11.2023
+ *  Updated on: May 17.2023
  *      Author: Wolle
  */
 
@@ -88,7 +88,7 @@ public:
 
 protected:
     const size_t m_buffSizePSRAM    = 300000;   // most webstreams limit the advance to 100...300Kbytes
-    const size_t m_buffSizeRAM      = 1600 * 5;
+    const size_t m_buffSizeRAM      = 1600 * 10;
     size_t       m_buffSize         = 0;
     size_t       m_freeSpace        = 0;
     size_t       m_writeSpace       = 0;
