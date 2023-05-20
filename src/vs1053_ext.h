@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: May 19.2023
+ *  Updated on: May 20.2023
  *      Author: Wolle
  */
 
@@ -272,6 +272,7 @@ protected:
     size_t   chunkedDataTransfer(uint8_t* bytes);
     bool     readID3V1Tag();
     boolean  streamDetection(uint32_t bytesAvail);
+    uint8_t  determineOggCodec(uint8_t* data, uint16_t len);
 
 public:
     // Constructor.  Only sets pin values.  Doesn't touch the chip.  Be sure to call begin()!
