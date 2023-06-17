@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jun 17.2023
+ *  Updated on: Jun 18.2023
  *      Author: Wolle
  */
 
@@ -757,7 +757,6 @@ void VS1053::processWebStream() {
         m_metacount = m_metaint;
         readMetadata(0, true); // reset all static vars
         s_volume = getVolume();
-        setVolume(0); // mute until stream is ready + 200ms
         f_mute = false;
     }
 
@@ -811,7 +810,10 @@ void VS1053::processWebStream() {
 
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(f_stream){
-        if(f_mute) if((muteTime + 200) < millis()) {setVolume(s_volume); f_mute = false;}
+        if(f_mute) {
+            if((muteTime + 200) < millis()) {setVolume(s_volume); f_mute = false;}
+            else {if(m_vol) setVolume(0);}
+        }
         static uint8_t cnt = 0;
         cnt++;
         if(cnt == 3){playAudioData(); cnt = 0;}
@@ -831,6 +833,9 @@ void VS1053::processWebStreamTS() {
     static uint8_t  ts_packetPtr = 0;
     const uint8_t   ts_packetsize = 188;
     static size_t   chunkSize = 0;
+    static uint8_t  s_volume;
+    static uint32_t muteTime;
+    static bool     f_mute;
 
     // first call, set some values to default - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
@@ -842,6 +847,8 @@ void VS1053::processWebStreamTS() {
         ts_packetPtr = 0;
         m_controlCounter = 0;
         m_f_firstCall = false;
+        s_volume = getVolume();
+        f_mute = false;
     }
 
     if(getDatamode() != AUDIO_DATA) return;        // guard
@@ -914,6 +921,10 @@ void VS1053::processWebStreamTS() {
 
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(f_stream){
+        if(f_mute) {
+            if((muteTime + 200) < millis()) {setVolume(s_volume); f_mute = false;}
+            else {if(m_vol) setVolume(0);}
+        }
         static uint8_t cnt = 0;
         cnt++;
         if(cnt == 1){playAudioData(); cnt = 0;} // aac only
@@ -933,6 +944,9 @@ void VS1053::processWebStreamHLS() {
     static uint16_t ID3WritePtr;
     static uint16_t ID3ReadPtr;
     static uint8_t* ID3Buff;
+    static uint8_t  s_volume;
+    static uint32_t muteTime;
+    static bool     f_mute;
 
     // first call, set some values to default - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
@@ -946,6 +960,8 @@ void VS1053::processWebStreamHLS() {
         firstBytes = true;
         ID3Buff = (uint8_t*)malloc(ID3BuffSize);
         m_controlCounter = 0;
+        s_volume = getVolume();
+        f_mute = false;
     }
 
     if(getDatamode() != AUDIO_DATA) return;        // guard
@@ -1016,6 +1032,10 @@ void VS1053::processWebStreamHLS() {
 
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(f_stream){
+        if(f_mute) {
+            if((muteTime + 200) < millis()) {setVolume(s_volume); f_mute = false;}
+            else {if(m_vol) setVolume(0);}
+        }
         static uint8_t cnt = 0;
         cnt++;
         if(cnt == 1){playAudioData(); cnt = 0;} // aac only
@@ -1191,7 +1211,7 @@ bool VS1053::readPlayListData() {
 
     // reads the content of the playlist and stores it in the vector m_contentlength
     // m_contentlength is a table of pointers to the lines
-    char pl[512]; // playlistLine
+    char pl[512] = {0}; // playlistLine
     uint32_t ctl  = 0;
     int lines = 0;
     // delete all memory in m_playlistContent
@@ -1244,7 +1264,7 @@ bool VS1053::readPlayListData() {
     } // outer while
     lines = m_playlistContent.size();
     for (int i = 0; i < lines ; i++) { // print all string in first vector of 'arr'
-        if(m_f_Log) log_i("pl=%i \"%s\"", i, m_playlistContent[i]);
+        log_i("pl=%i \"%s\"", i, m_playlistContent[i]);
     }
     setDatamode(AUDIO_PLAYLISTDATA);
     return true;
