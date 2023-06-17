@@ -745,6 +745,9 @@ void VS1053::processWebStream() {
     const uint16_t  maxFrameSize = InBuff.getMaxBlockSize();    // every mp3/aac frame is not bigger
     static bool     f_stream;                                   // first audio data received
     static uint32_t chunkSize;                                  // chunkcount read from stream
+    static uint8_t  s_volume;
+    static uint32_t muteTime;
+    static bool     f_mute;
 
     // first call, set some values to default  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
@@ -753,6 +756,9 @@ void VS1053::processWebStream() {
         chunkSize = 0;
         m_metacount = m_metaint;
         readMetadata(0, true); // reset all static vars
+        s_volume = getVolume();
+        setVolume(0); // mute until stream is ready + 200ms
+        f_mute = false;
     }
 
     if(getDatamode() != AUDIO_DATA) return;              // guard
@@ -788,6 +794,8 @@ void VS1053::processWebStream() {
 
         if(InBuff.bufferFilled() > maxFrameSize && !f_stream) {  // waiting for buffer filled
             f_stream = true;  // ready to play the audio data
+            muteTime = millis();
+            f_mute = true;
             AUDIO_INFO("stream ready");
         }
         if(!f_stream) return;
@@ -803,6 +811,7 @@ void VS1053::processWebStream() {
 
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(f_stream){
+        if(f_mute) if((muteTime + 200) < millis()) {setVolume(s_volume); f_mute = false;}
         static uint8_t cnt = 0;
         cnt++;
         if(cnt == 3){playAudioData(); cnt = 0;}
