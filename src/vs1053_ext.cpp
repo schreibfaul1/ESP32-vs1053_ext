@@ -2248,14 +2248,11 @@ bool VS1053::httpPrint(const char* host) {
 
     char* h_host = NULL;  // pointer of l_host without http:// or https://
 
-    if(startsWith(host, "https")){
-        h_host = strdup(host + 8);
-        m_f_ssl = true;
-    }
-    else{
-        h_host = strdup(host + 7);
-        m_f_ssl = false;
-    }
+    if(startsWith(host, "https")) m_f_ssl = true;
+    else                          m_f_ssl = false;
+
+    if(m_f_ssl) h_host = strdup(host + 8);
+    else        h_host = strdup(host + 7);
 
     int16_t  pos_slash;      // position of "/" in hostname
     int16_t  pos_colon;      // position of ":" in hostname
