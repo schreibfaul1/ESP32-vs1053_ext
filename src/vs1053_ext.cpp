@@ -1264,7 +1264,7 @@ bool VS1053::readPlayListData() {
     } // outer while
     lines = m_playlistContent.size();
     for (int i = 0; i < lines ; i++) { // print all string in first vector of 'arr'
-        log_i("pl=%i \"%s\"", i, m_playlistContent[i]);
+        if(m_f_Log) log_i("pl=%i \"%s\"", i, m_playlistContent[i]);
     }
     setDatamode(AUDIO_PLAYLISTDATA);
     return true;
