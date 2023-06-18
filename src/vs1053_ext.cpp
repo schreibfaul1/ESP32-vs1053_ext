@@ -745,7 +745,6 @@ void VS1053::processWebStream() {
     const uint16_t  maxFrameSize = InBuff.getMaxBlockSize();    // every mp3/aac frame is not bigger
     static bool     f_stream;                                   // first audio data received
     static uint32_t chunkSize;                                  // chunkcount read from stream
-    static uint8_t  s_volume;
     static uint32_t muteTime;
     static bool     f_mute;
 
@@ -756,7 +755,6 @@ void VS1053::processWebStream() {
         chunkSize = 0;
         m_metacount = m_metaint;
         readMetadata(0, true); // reset all static vars
-        s_volume = getVolume();
         f_mute = false;
     }
 
@@ -811,8 +809,7 @@ void VS1053::processWebStream() {
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(f_stream){
         if(f_mute) {
-            if((muteTime + 200) < millis()) {setVolume(s_volume); f_mute = false;}
-            else {if(m_vol) setVolume(0);}
+            if((muteTime + 200) < millis()) {setVolume(m_vol); f_mute = false;}
         }
         static uint8_t cnt = 0;
         cnt++;
@@ -833,7 +830,6 @@ void VS1053::processWebStreamTS() {
     static uint8_t  ts_packetPtr = 0;
     const uint8_t   ts_packetsize = 188;
     static size_t   chunkSize = 0;
-    static uint8_t  s_volume;
     static uint32_t muteTime;
     static bool     f_mute;
 
@@ -847,7 +843,6 @@ void VS1053::processWebStreamTS() {
         ts_packetPtr = 0;
         m_controlCounter = 0;
         m_f_firstCall = false;
-        s_volume = getVolume();
         f_mute = false;
     }
 
@@ -913,6 +908,8 @@ void VS1053::processWebStreamTS() {
         if(InBuff.bufferFilled() > maxFrameSize && !f_stream) {  // waiting for buffer filled
             f_stream = true;  // ready to play the audio data
             uint16_t filltime = millis() - m_t0;
+            muteTime = millis();
+            f_mute = true;
             if(m_f_Log) AUDIO_INFO("stream ready");
             if(m_f_Log) AUDIO_INFO("buffer filled in %d ms", filltime);
         }
@@ -922,8 +919,7 @@ void VS1053::processWebStreamTS() {
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(f_stream){
         if(f_mute) {
-            if((muteTime + 200) < millis()) {setVolume(s_volume); f_mute = false;}
-            else {if(m_vol) setVolume(0);}
+            if((muteTime + 200) < millis()) {setVolume(m_vol); f_mute = false;}
         }
         static uint8_t cnt = 0;
         cnt++;
@@ -944,7 +940,6 @@ void VS1053::processWebStreamHLS() {
     static uint16_t ID3WritePtr;
     static uint16_t ID3ReadPtr;
     static uint8_t* ID3Buff;
-    static uint8_t  s_volume;
     static uint32_t muteTime;
     static bool     f_mute;
 
@@ -960,7 +955,6 @@ void VS1053::processWebStreamHLS() {
         firstBytes = true;
         ID3Buff = (uint8_t*)malloc(ID3BuffSize);
         m_controlCounter = 0;
-        s_volume = getVolume();
         f_mute = false;
     }
 
@@ -1033,8 +1027,7 @@ void VS1053::processWebStreamHLS() {
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(f_stream){
         if(f_mute) {
-            if((muteTime + 200) < millis()) {setVolume(s_volume); f_mute = false;}
-            else {if(m_vol) setVolume(0);}
+            if((muteTime + 200) < millis()) {setVolume(m_vol); f_mute = false;}
         }
         static uint8_t cnt = 0;
         cnt++;
@@ -1208,7 +1201,6 @@ bool VS1053::readPlayListData() {
 
     uint32_t chunksize = 0; uint8_t readedBytes = 0;
     if(m_f_chunked) chunksize = chunkedDataTransfer(&readedBytes);
-
     // reads the content of the playlist and stores it in the vector m_contentlength
     // m_contentlength is a table of pointers to the lines
     char pl[512] = {0}; // playlistLine
@@ -2213,6 +2205,7 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
     if(res) {
         uint32_t dt = millis() - t;
         strcpy(m_lastHost, l_host);
+        write_register(SCI_VOL, 0xFFFF); // make silence
         AUDIO_INFO("%s has been established in %u ms, free Heap: %u bytes", m_f_ssl ? "SSL" : "Connection", dt,
                    ESP.getFreeHeap());
         m_f_running = true;
