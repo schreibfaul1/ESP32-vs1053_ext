@@ -1851,7 +1851,7 @@ bool VS1053::parseHttpResponseHeader() { // this is the response to a GET / requ
             int32_t i_cl = atoi(c_cl);
             m_contentlength = i_cl;
             m_streamType = ST_WEBFILE; // Stream comes from a fileserver
-            AUDIO_INFO("content-length: %i", m_contentlength);
+            if(m_f_Log) AUDIO_INFO("content-length: %i", m_contentlength);
         }
 
         else if(startsWith(rhl, "icy-description:")) {
