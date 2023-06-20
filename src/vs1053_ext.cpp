@@ -2,11 +2,13 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jun 18.2023
+ *  Updated on: Jun 20.2023
  *      Author: Wolle
  */
 
 #include "vs1053_ext.h"
+
+#define LOAD_VS0153_PLUGIN  // load patch (FLAC and VU meter)
 
 //---------------------------------------------------------------------------------------------------------------------
 AudioBuffer::AudioBuffer(size_t maxBlockSize) {
@@ -329,7 +331,27 @@ void VS1053::begin(){
     await_data_request();
     m_endFillByte = wram_read(0x1E06) & 0xFF;
 
-//    loadUserCode(); // flac patch, does not work with all boards, try it
+    #ifdef LOAD_VS0153_PLUGIN
+        loadUserCode(); // flac patch, does not work with all boards, try it
+        m_f_VUmeter = true;
+    #endif
+
+    uint16_t status = read_register(SCI_STATUS);
+    if(status){
+        write_register(SCI_STATUS, status | _BV(9));
+        m_f_VUmeter = true;
+    }
+
+}
+//---------------------------------------------------------------------------------------------------------------------
+uint16_t VS1053::getVUlevel() {
+    if(!m_f_VUmeter) return 0;
+    uint16_t vum = read_register(SCI_AICTRL3);  // returns the values in 1 dB resolution from 0 (lowest) 95 (highest)
+    uint8_t left = vum >> 8;                    // MSB left channel
+    uint8_t right  = vum & 0x00FF;              // LSB left channel
+    right = map(right, 0, 95, 0, 127);          // expand the range from 96 to 128 steps
+    left  = map(left,  0, 95, 0 ,127);
+    return (left << 8) + right;
 }
 //---------------------------------------------------------------------------------------------------------------------
 size_t VS1053::bufferFilled(){

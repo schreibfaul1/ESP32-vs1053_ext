@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: May 24.2023
+ *  Updated on: Jun 20.2023
  *      Author: Wolle
  */
 
@@ -211,6 +211,7 @@ private:
     bool            m_f_stream_ready=false;         // Set after connecttohost and first streamdata are available
     bool            m_f_unsync = false;
     bool            m_f_exthdr = false;             // ID3 extended header
+    bool            m_f_VUmeter = false;            // true if VUmeter is enabled
 
 protected:
 
@@ -280,6 +281,7 @@ public:
     ~VS1053();
 
     void     begin() ;                                  // Begin operation.  Sets pins correctly and prepares SPI bus.
+    uint16_t getVUlevel();                              // 0 ... 255, MSB - right channel, LSB - left channel
     uint32_t stop_mp3client();
     void     setVolumeSteps(uint8_t steps);             // default 21
     void     setVolume(uint8_t vol);                    // Set the player volume.Level from 0-21, higher is louder.
