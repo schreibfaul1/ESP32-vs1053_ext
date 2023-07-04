@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jul 03.2023
+ *  Updated on: Jul 04.2023
  *      Author: Wolle
  */
 
@@ -1066,6 +1066,8 @@ void VS1053::processWebFile(){
     static uint32_t byteCounter;                                // count received data
     static uint32_t chunkSize;                                  // chunkcount read from stream
     static size_t   audioDataCount;                             // counts the decoded audiodata only
+    static uint32_t muteTime;
+    static bool     f_mute;
 
     // first call, set some values to default - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
@@ -1076,6 +1078,7 @@ void VS1053::processWebFile(){
         byteCounter = 0;
         chunkSize = 0;
         audioDataCount = 0;
+        f_mute = false;
     }
 
     if(!m_contentlength && !m_f_tts) {log_e("webfile without contentlength!"); stopSong(); return;} // guard
@@ -1110,6 +1113,8 @@ void VS1053::processWebFile(){
 
     if(InBuff.bufferFilled() > maxFrameSize && !f_stream) {  // waiting for buffer filled
         f_stream = true;  // ready to play the audio data
+        muteTime = millis();
+        f_mute = true;
         uint16_t filltime = millis() - m_t0;
         if(m_f_Log) AUDIO_INFO("stream ready\nbuffer filled in %d ms", filltime);
     }
@@ -1175,6 +1180,9 @@ void VS1053::processWebFile(){
 
     // play audio data - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(f_stream){
+         if(f_mute) {
+            if((muteTime + 200) < millis()) {setVolume(m_vol); f_mute = false;}
+        }
         static uint8_t cnt = 0;
         uint8_t compression;
         if(m_codec == CODEC_WAV)  compression = 1;
