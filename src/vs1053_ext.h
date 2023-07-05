@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jun 20.2023
+ *  Updated on: Jul 05.2023
  *      Author: Wolle
  */
 
@@ -37,8 +37,6 @@ extern __attribute__((weak)) void vs1053_icyurl(const char*);
 extern __attribute__((weak)) void vs1053_icydescription(const char*);
 extern __attribute__((weak)) void vs1053_lasthost(const char*);
 extern __attribute__((weak)) void vs1053_eof_stream(const char*); // The webstream comes to an end
-
-#define AUDIO_INFO(...) {char buff[512 + 64]; sprintf(buff,__VA_ARGS__); if(vs1053_info) vs1053_info(buff);}
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -162,9 +160,10 @@ private:
     SPIClass*       spi_VS1053 = NULL;
     SPISettings     VS1053_SPI;
 
+    char*           m_ibuff = nullptr;              // used in audio_info()
     char*           m_chbuf = NULL;
     uint16_t        m_chbufSize = 0;                // will set in constructor (depending on PSRAM)
-    char            m_lastHost[256];                // Store the last URL to a webstream
+    char*           m_lastHost = NULL;              // Store the last URL to a webstream
     char*           m_playlistBuff = NULL;          // stores playlistdata
     uint8_t         m_codec = CODEC_NONE;           //
     uint8_t         m_expectedCodec = CODEC_NONE;   // set in connecttohost (e.g. http://url.mp3 -> CODEC_MP3)

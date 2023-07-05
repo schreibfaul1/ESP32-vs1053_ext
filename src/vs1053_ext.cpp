@@ -2,13 +2,13 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jul 04.2023
+ *  Updated on: Jul 05.2023
  *      Author: Wolle
  */
 
 #include "vs1053_ext.h"
 
-#define LOAD_VS0153_PLUGIN  // load patch (FLAC and VU meter)
+// #define LOAD_VS0153_PLUGIN  // load patch (FLAC and VU meter)
 
 //---------------------------------------------------------------------------------------------------------------------
 AudioBuffer::AudioBuffer(size_t maxBlockSize) {
@@ -156,7 +156,14 @@ VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, uint8_t spi
         heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL)
 
     if(psramInit()) m_chbufSize = 4096; else m_chbufSize = 512 + 64;
+    m_ibuff    = (char*)    __malloc_heap_psram(512 + 64);
+    m_lastHost = (char*)    __malloc_heap_psram(512);
     m_chbuf    = (char*)    __malloc_heap_psram(m_chbufSize);
+
+    if(!m_chbuf || !m_lastHost || !m_ibuff) log_e("oom");
+
+    #define AUDIO_INFO(...) {sprintf(m_ibuff, __VA_ARGS__); if(vs1053_info) vs1053_info(m_ibuff);}
+
 
     clientsecure.setInsecure();                 // update to ESP32 Arduino version 1.0.5-rc05 or higher
     m_endFillByte=0;
@@ -166,6 +173,8 @@ VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, uint8_t spi
 VS1053::~VS1053(){
     // destructor
     if(m_chbuf)    {free(m_chbuf);    m_chbuf    = NULL;}
+    if(m_lastHost) {free(m_lastHost); m_lastHost = NULL;}
+    if(m_ibuff)    {free(m_ibuff);    m_ibuff    = NULL;}
 }
 //---------------------------------------------------------------------------------------------------------------------
 void VS1053::initInBuff() {
@@ -2118,75 +2127,70 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
 
     if(host == NULL) {
         AUDIO_INFO("Hostaddress is empty");
-        return false;
+         return false;
     }
 
     uint16_t lenHost = strlen(host);
 
-    if(lenHost >= 512 - 10) {
+    if(lenHost >= 512 + 64 - 10) {
         AUDIO_INFO("Hostaddress is too long");
         return false;
     }
 
-    int   idx = indexOf(host, "http");
+    int idx = indexOf(host, "http");
     char* l_host = (char*)malloc(lenHost + 10);
-    if(idx < 0) {
-        strcpy(l_host, "http://");
-        strcat(l_host, host);
-    }                                       // amend "http;//" if not found
-    else { strcpy(l_host, (host + idx)); }  // trim left if necessary
+    if(idx < 0){strcpy(l_host, "http://"); strcat(l_host, host); } // amend "http;//" if not found
+    else       {strcpy(l_host, (host + idx));}                     // trim left if necessary
 
-    char* h_host = NULL;                    // pointer of l_host without http:// or https://
+    char* h_host = NULL; // pointer of l_host without http:// or https://
     if(startsWith(l_host, "https")) h_host = strdup(l_host + 8);
-    else
-        h_host = strdup(l_host + 7);
+    else                            h_host = strdup(l_host + 7);
 
     // initializationsequence
-    int16_t  pos_slash;      // position of "/" in hostname
-    int16_t  pos_colon;      // position of ":" in hostname
-    int16_t  pos_ampersand;  // position of "&" in hostname
-    uint16_t port = 80;      // port number
+    int16_t pos_slash;                                        // position of "/" in hostname
+    int16_t pos_colon;                                        // position of ":" in hostname
+    int16_t pos_ampersand;                                    // position of "&" in hostname
+    uint16_t port = 80;                                       // port number
 
     // In the URL there may be an extension, like noisefm.ru:8000/play.m3u&t=.m3u
-    pos_slash = indexOf(h_host, "/", 0);
-    pos_colon = indexOf(h_host, ":", 0);
-    if(isalpha(h_host[pos_colon + 1])) pos_colon = -1;  // no portnumber follows
+    pos_slash     = indexOf(h_host, "/", 0);
+    pos_colon     = indexOf(h_host, ":", 0);
+        if(isalpha(h_host[pos_colon + 1])) pos_colon = -1; // no portnumber follows
     pos_ampersand = indexOf(h_host, "&", 0);
 
-    char* hostwoext = NULL;  // "skonto.ls.lv:8002" in "skonto.ls.lv:8002/mp3"
-    char* extension = NULL;  // "/mp3" in "skonto.ls.lv:8002/mp3"
+    char *hostwoext = NULL;                                  // "skonto.ls.lv:8002" in "skonto.ls.lv:8002/mp3"
+    char *extension = NULL;                                  // "/mp3" in "skonto.ls.lv:8002/mp3"
 
     if(pos_slash > 1) {
         hostwoext = (char*)malloc(pos_slash + 1);
         memcpy(hostwoext, h_host, pos_slash);
         hostwoext[pos_slash] = '\0';
-        uint16_t extLen = urlencode_expected_len(h_host + pos_slash);
-        extension = (char*)malloc(extLen + 20);
+        uint16_t extLen =  urlencode_expected_len(h_host + pos_slash);
+        extension = (char *)malloc(extLen + 20);
         memcpy(extension, h_host + pos_slash, extLen);
         urlencode(extension, extLen, true);
     }
-    else {  // url has no extension
+    else{  // url has no extension
         hostwoext = strdup(h_host);
         extension = strdup("/");
     }
 
-    if((pos_colon >= 0) && ((pos_ampersand == -1) || (pos_ampersand > pos_colon))) {
-        port = atoi(h_host + pos_colon + 1);  // Get portnumber as integer
-        hostwoext[pos_colon] = '\0';          // Host without portnumber
+    if((pos_colon >= 0) && ((pos_ampersand == -1) || (pos_ampersand > pos_colon))){
+        port = atoi(h_host + pos_colon + 1);// Get portnumber as integer
+        hostwoext[pos_colon] = '\0';// Host without portnumber
     }
 
     AUDIO_INFO("Connect to new host: \"%s\"", l_host);
-    setDefaults();  // no need to stop clients if connection is established (default is true)
+    setDefaults(); // no need to stop clients if connection is established (default is true)
 
     if(startsWith(l_host, "https")) m_f_ssl = true;
-    else
-        m_f_ssl = false;
+    else                            m_f_ssl = false;
 
     // optional basic authorization
     uint16_t auth = strlen(user) + strlen(pwd);
-    char     authorization[base64_encode_expected_len(auth + 1) + 1];
+    char authorization[base64_encode_expected_len(auth + 1) + 1];
     authorization[0] = '\0';
-    if(auth > 0) {
+    if (auth > 0) {
         char toEncode[auth + 4];
         strcpy(toEncode, user);
         strcat(toEncode, ":");
@@ -2196,7 +2200,7 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
 
     //  AUDIO_INFO("Connect to \"%s\" on port %d, extension \"%s\"", hostwoext, port, extension);
 
-    char rqh[strlen(h_host) + strlen(authorization) + 200];  // http request header
+    char rqh[strlen(h_host) + strlen(authorization) + 200]; // http request header
     rqh[0] = '\0';
 
     strcat(rqh, "GET ");
@@ -2207,65 +2211,60 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
     strcat(rqh, "\r\n");
     strcat(rqh, "Icy-MetaData:1\r\n");
 
-    if(auth > 0) {
+    if (auth > 0) {
         strcat(rqh, "Authorization: Basic ");
         strcat(rqh, authorization);
         strcat(rqh, "\r\n");
     }
 
     strcat(rqh, "Accept-Encoding: identity;q=1,*;q=0\r\n");
-    //    strcat(rqh, "User-Agent: Mozilla/5.0\r\n"); #363
+//    strcat(rqh, "User-Agent: Mozilla/5.0\r\n"); #363
     strcat(rqh, "Connection: keep-alive\r\n\r\n");
 
-    //    if(ESP_ARDUINO_VERSION_MAJOR == 2 && ESP_ARDUINO_VERSION_MINOR == 0 && ESP_ARDUINO_VERSION_PATCH >= 3){
-    //        m_timeout_ms_ssl = UINT16_MAX;  // bug in v2.0.3 if hostwoext is a IPaddr not a name
-    //        m_timeout_ms = UINT16_MAX;  // [WiFiClient.cpp:253] connect(): select returned due to timeout 250 ms for
-    //        fd 48
-    //    } fix in V2.0.8
+//    if(ESP_ARDUINO_VERSION_MAJOR == 2 && ESP_ARDUINO_VERSION_MINOR == 0 && ESP_ARDUINO_VERSION_PATCH >= 3){
+//        m_timeout_ms_ssl = UINT16_MAX;  // bug in v2.0.3 if hostwoext is a IPaddr not a name
+//        m_timeout_ms = UINT16_MAX;  // [WiFiClient.cpp:253] connect(): select returned due to timeout 250 ms for fd 48
+//    } fix in V2.0.8
 
-    bool res = true;  // no need to reconnect if connection exists
+    bool res = true; // no need to reconnect if connection exists
 
-    if(m_f_ssl) {
-        _client = static_cast<WiFiClient*>(&clientsecure);
-        if(port == 80) port = 443;
-    }
-    else { _client = static_cast<WiFiClient*>(&client); }
+    if(m_f_ssl){ _client = static_cast<WiFiClient*>(&clientsecure); if(port == 80) port = 443;}
+    else       { _client = static_cast<WiFiClient*>(&client);}
 
     uint32_t t = millis();
     if(m_f_Log) AUDIO_INFO("connect to %s on port %d path %s", hostwoext, port, extension);
     res = _client->connect(hostwoext, port, m_f_ssl ? m_timeout_ms_ssl : m_timeout_ms);
-    if(res) {
+    if(res){
         uint32_t dt = millis() - t;
         strcpy(m_lastHost, l_host);
-        write_register(SCI_VOL, 0xFFFF); // make silence
-        AUDIO_INFO("%s has been established in %u ms, free Heap: %u bytes", m_f_ssl ? "SSL" : "Connection", dt,
-                   ESP.getFreeHeap());
+        AUDIO_INFO("%s has been established in %u ms, free Heap: %u bytes",
+                    m_f_ssl?"SSL":"Connection", dt, ESP.getFreeHeap());
         m_f_running = true;
     }
 
     m_expectedCodec = CODEC_NONE;
     m_expectedPlsFmt = FORMAT_NONE;
 
-    if(res) {
+    if(res){
         _client->print(rqh);
-        if(endsWith(extension, ".mp3")) m_expectedCodec = CODEC_MP3;
-        if(endsWith(extension, ".aac")) m_expectedCodec = CODEC_AAC;
-        if(endsWith(extension, ".wav")) m_expectedCodec = CODEC_WAV;
-        if(endsWith(extension, ".m4a")) m_expectedCodec = CODEC_M4A;
-        if(endsWith(extension, ".ogg")) m_expectedCodec = CODEC_OGG;
-        if(endsWith(extension, ".flac")) m_expectedCodec = CODEC_FLAC;
-        if(endsWith(extension, "-flac")) m_expectedCodec = CODEC_FLAC;
-        if(endsWith(extension, ".opus")) m_expectedCodec = CODEC_OPUS;
-        if(endsWith(extension, "/opus")) m_expectedCodec = CODEC_OPUS;
-        if(endsWith(extension, ".asx")) m_expectedPlsFmt = FORMAT_ASX;
-        if(endsWith(extension, ".m3u")) m_expectedPlsFmt = FORMAT_M3U;
+        if(endsWith(extension, ".mp3"))   m_expectedCodec = CODEC_MP3;
+        if(endsWith(extension, ".aac"))   m_expectedCodec = CODEC_AAC;
+        if(endsWith(extension, ".wav"))   m_expectedCodec = CODEC_WAV;
+        if(endsWith(extension, ".m4a"))   m_expectedCodec = CODEC_M4A;
+        if(endsWith(extension, ".ogg"))   m_expectedCodec = CODEC_OGG;
+        if(endsWith(extension, ".flac"))  m_expectedCodec = CODEC_FLAC;
+        if(endsWith(extension, "-flac"))  m_expectedCodec = CODEC_FLAC;
+        if(endsWith(extension, ".opus"))  m_expectedCodec = CODEC_OPUS;
+        if(endsWith(extension, "/opus"))  m_expectedCodec = CODEC_OPUS;
+        if(endsWith(extension, ".asx"))  m_expectedPlsFmt = FORMAT_ASX;
+        if(endsWith(extension, ".m3u"))  m_expectedPlsFmt = FORMAT_M3U;
         if(endsWith(extension, ".m3u8")) m_expectedPlsFmt = FORMAT_M3U8;
-        if(endsWith(extension, ".pls")) m_expectedPlsFmt = FORMAT_PLS;
+        if(endsWith(extension, ".pls"))  m_expectedPlsFmt = FORMAT_PLS;
 
-        setDatamode(HTTP_RESPONSE_HEADER);  // Handle header
+        setDatamode(HTTP_RESPONSE_HEADER);   // Handle header
         m_streamType = ST_WEBSTREAM;
     }
-    else {
+    else{
         AUDIO_INFO("Request %s failed!", l_host);
         if(vs1053_showstation) vs1053_showstation("");
         if(vs1053_showstreamtitle) vs1053_showstreamtitle("");
@@ -2273,25 +2272,13 @@ bool VS1053::connecttohost(const char* host, const char* user, const char* pwd) 
         if(vs1053_icyurl) vs1053_icyurl("");
         m_lastHost[0] = 0;
     }
-    if(hostwoext) {
-        free(hostwoext);
-        hostwoext = NULL;
-    }
-    if(extension) {
-        free(extension);
-        extension = NULL;
-    }
-    if(l_host) {
-        free(l_host);
-        l_host = NULL;
-    }
-    if(h_host) {
-        free(h_host);
-        h_host = NULL;
-    }
+    if(hostwoext) {free(hostwoext); hostwoext = NULL;}
+    if(extension) {free(extension); extension = NULL;}
+    if(l_host   ) {free(l_host);    l_host    = NULL;}
+    if(h_host   ) {free(h_host);    h_host    = NULL;}
     return res;
 }
-//---------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------
 bool VS1053::httpPrint(const char* host) {
     // user and pwd for authentification only, can be empty
 
