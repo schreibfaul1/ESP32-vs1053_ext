@@ -8,7 +8,7 @@
 
 #include "vs1053_ext.h"
 
-// #define LOAD_VS0153_PLUGIN  // load patch (FLAC and VU meter)
+#define LOAD_VS0153_PLUGIN  // load patch (FLAC and VU meter)
 
 //---------------------------------------------------------------------------------------------------------------------
 AudioBuffer::AudioBuffer(size_t maxBlockSize) {
