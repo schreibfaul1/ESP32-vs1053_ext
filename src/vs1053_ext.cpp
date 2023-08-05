@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Jul 20.2023
+ *  Updated on: Aug 05.2023
  *      Author: Wolle
  */
 
@@ -356,8 +356,8 @@ void VS1053::begin(){
 uint16_t VS1053::getVUlevel() {
     if(!m_f_VUmeter) return 0;
     uint16_t vum = read_register(SCI_AICTRL3);  // returns the values in 1 dB resolution from 0 (lowest) 95 (highest)
-    uint8_t left = vum >> 8;                    // MSB left channel
-    uint8_t right  = vum & 0x00FF;              // LSB left channel
+    uint8_t right = vum >> 8;                   // MSB left channel
+    uint8_t left  = vum & 0x00FF;               // LSB left channel
     right = map(right, 0, 95, 0, 127);          // expand the range from 96 to 128 steps
     left  = map(left,  0, 95, 0 ,127);
     return (left << 8) + right;
