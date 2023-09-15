@@ -2084,9 +2084,7 @@ void VS1053::setDefaults(){
     vector_clear_and_shrink(m_playlistURL);
     vector_clear_and_shrink(m_playlistContent);
     client.stop();
-    client.flush(); // release memory
     clientsecure.stop();
-    clientsecure.flush();
     _client = static_cast<WiFiClient*>(&client); /* default to *something* so that no NULL deref can happen */
     m_f_ctseen=false;                                       // Contents type not seen yet
     m_metaint=0;                                            // No metaint yet
