@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Aug 05.2023
+ *  Updated on: Sep 23.2023
  *      Author: Wolle
  */
 
@@ -2069,8 +2069,6 @@ uint32_t VS1053::stop_mp3client(){
     m_f_webstream = false;
     m_f_running = false;
     write_register(SCI_VOL, 0);                         // Mute while stopping
-
-    _client->flush();                                     // Flush stream client
     _client->stop();                                      // Stop stream client
     write_register(SCI_VOL, v);
     return pos;
