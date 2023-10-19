@@ -2,7 +2,7 @@
  *  vs1053_ext.cpp
  *
  *  Created on: Jul 09.2017
- *  Updated on: Sep 23.2023
+ *  Updated on: Oct 19.2023
  *      Author: Wolle
  */
 
@@ -155,10 +155,12 @@ VS1053::VS1053(uint8_t _cs_pin, uint8_t _dcs_pin, uint8_t _dreq_pin, uint8_t spi
     #define __malloc_heap_psram(size) \
         heap_caps_malloc_prefer(size, 2, MALLOC_CAP_DEFAULT|MALLOC_CAP_SPIRAM, MALLOC_CAP_DEFAULT|MALLOC_CAP_INTERNAL)
 
-    if(psramInit()) m_chbufSize = 4096; else m_chbufSize = 512 + 64;
-    m_ibuff    = (char*)    __malloc_heap_psram(512 + 64);
+    m_f_psramFound = psramInit();
+    if(m_f_psramFound) m_chbufSize = 4096; else m_chbufSize = 512 + 64;
+    if(m_f_psramFound) m_ibuffSize = 4096; else m_ibuffSize = 512 + 64;
     m_lastHost = (char*)    __malloc_heap_psram(512);
     m_chbuf    = (char*)    __malloc_heap_psram(m_chbufSize);
+    m_ibuff    = (char*)    __malloc_heap_psram(m_ibuffSize);
 
     if(!m_chbuf || !m_lastHost || !m_ibuff) log_e("oom");
 
@@ -588,52 +590,42 @@ void VS1053::loop(){
         }
     }
     else { // m3u8 datastream only
-        static bool f_noNewHost = false;
-        static int32_t remaintime, timestamp1, timestamp2; // m3u8 time management
         const char* host;
 
-        switch(getDatamode()){
-            case HTTP_RESPONSE_HEADER:
-                playAudioData(); // fill I2S DMA buffer
-                parseHttpResponseHeader();
-                m_codec = CODEC_AAC;
-                break;
-            case AUDIO_PLAYLISTINIT:
-                readPlayListData();
-                break;
-            case AUDIO_PLAYLISTDATA:
-                host = parsePlaylist_M3U8();
-                m_f_m3u8data = true;
-                if(host){
-                    f_noNewHost = false;
-                    timestamp1 = millis();
-                    httpPrint(host);
-                }
-                else {
-                    f_noNewHost = true;
-                    timestamp2 = millis() + remaintime;
-                    setDatamode(AUDIO_DATA); //fake datamode, we have no new audiosequence yet, so let audio run
-                }
-                break;
-            case AUDIO_DATA:
-                if(m_f_ts) processWebStreamTS();  // aac or aacp with ts packets
-                else       processWebStreamHLS(); // aac or aacp normal stream
-                if(f_noNewHost){
-                    m_f_continue = false;
-                    if(timestamp2 < millis()) {
-                        httpPrint(m_lastHost);
-                        remaintime = 1000;
-                    }
-                }
-                else{
-                    if(m_f_continue){ // processWebStream() needs more data
-                        remaintime = (int32_t)(m_m3u8_targetDuration * 1000) - (millis() - timestamp1);
-                    //    if(m_m3u8_targetDuration < 10) remaintime += 1000;
-                        m_f_continue = false;
-                        setDatamode(AUDIO_PLAYLISTDATA);
-                    }
-                }
-                break;
+        switch(getDatamode()) {
+        case HTTP_RESPONSE_HEADER:
+            playAudioData(); // fill I2S DMA buffer
+            if(!parseHttpResponseHeader()){
+                if(m_f_timeout) connecttohost(m_lastHost);
+            }
+            m_codec = CODEC_AAC;
+            break;
+        case AUDIO_PLAYLISTINIT:
+            playAudioData(); // fill I2S DMA buffer
+            readPlayListData();
+            break;
+        case AUDIO_PLAYLISTDATA:
+            playAudioData(); // fill I2S DMA buffer
+            host = parsePlaylist_M3U8();
+            playAudioData(); // fill I2S DMA buffer
+            if(host) { // host contains the next playlist URL
+                httpPrint(host);
+            }
+            else { // host == NULL means connect to m3u8 URL
+                httpPrint(m_lastHost);
+                setDatamode(HTTP_RESPONSE_HEADER); // we have a new playlist now
+            }
+
+            break;
+        case AUDIO_DATA:
+            if(m_f_ts) { processWebStreamTS(); } // aac or aacp with ts packets
+            else { processWebStreamHLS(); }      // aac or aacp normal stream
+
+            if(m_f_continue) { // at this point m_f_continue is true, means processWebStream() needs more data
+                setDatamode(AUDIO_PLAYLISTDATA);
+                m_f_continue = false;
+            }
+            break;
         }
     }
 }
@@ -854,6 +846,7 @@ void VS1053::processWebStreamTS() {
     uint32_t        availableBytes;                             // available bytes in stream
     static bool     f_stream;                                   // first audio data received
     static bool     f_firstPacket;
+    static bool     f_chunkFinished;
     static uint32_t byteCounter;                                // count received data
     static uint8_t  ts_packet[188];                             // m3u8 transport stream is 188 bytes long
     uint8_t         ts_packetStart = 0;
@@ -868,6 +861,7 @@ void VS1053::processWebStreamTS() {
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
         f_stream = false;
         f_firstPacket = true;
+        f_chunkFinished = false;
         byteCounter = 0;
         chunkSize = 0;
         m_t0 = millis();
@@ -921,12 +915,21 @@ void VS1053::processWebStreamTS() {
                 }
             }
             if(byteCounter == m_contentlength  || byteCounter == chunkSize){
+                f_chunkFinished = true;
                 byteCounter = 0;
-                m_f_continue = true;
             }
             if(byteCounter > m_contentlength) log_e("byteCounter overflow");
         }
 
+    }
+    if(f_chunkFinished) {
+        if(m_f_psramFound) {
+            if(InBuff.bufferFilled() < 50000) { f_chunkFinished = false; m_f_continue = true;}
+        }
+        else {
+            f_chunkFinished = false;
+            m_f_continue = true;
+        }
     }
 
     // if the buffer is often almost empty issue a warning - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -962,10 +965,11 @@ void VS1053::processWebStreamTS() {
 void VS1053::processWebStreamHLS() {
 
    const uint16_t  maxFrameSize = InBuff.getMaxBlockSize();    // every mp3/aac frame is not bigger
-    const uint16_t  ID3BuffSize = 1024;
+    uint16_t  ID3BuffSize = 1024; if(m_f_psramFound) ID3BuffSize = 4096;
     uint32_t        availableBytes;                             // available bytes in stream
     static bool     f_stream;                                   // first audio data received
     static bool     firstBytes;
+    static bool     f_chunkFinished;
     static uint32_t byteCounter;                                // count received data
     static size_t   chunkSize = 0;
     static uint16_t ID3WritePtr;
@@ -977,6 +981,7 @@ void VS1053::processWebStreamHLS() {
     // first call, set some values to default - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(m_f_firstCall) { // runs only ont time per connection, prepare for start
         f_stream = false;
+        f_chunkFinished = false;
         byteCounter = 0;
         chunkSize = 0;
         ID3WritePtr = 0;
@@ -1037,8 +1042,19 @@ void VS1053::processWebStreamHLS() {
         InBuff.bytesWritten(bytesWasWritten);
 
         byteCounter += bytesWasWritten;
+
         if(byteCounter == m_contentlength || byteCounter == chunkSize){
+            f_chunkFinished = true;
             byteCounter = 0;
+        }
+    }
+
+    if(f_chunkFinished) {
+        if(m_f_psramFound) {
+            if(InBuff.bufferFilled() < 50000) {f_chunkFinished = false; m_f_continue = true;}
+        }
+        else {
+            f_chunkFinished = false;
             m_f_continue = true;
         }
     }
@@ -1281,8 +1297,8 @@ bool VS1053::readPlayListData() {
         if(startsWith(pl, "<!DOCTYPE")) {AUDIO_INFO("url is a webpage!"); goto exit;}
         if(startsWith(pl, "<html"))     {AUDIO_INFO("url is a webpage!"); goto exit;}
         if(strlen(pl) > 0) m_playlistContent.push_back(strdup((const char*)pl));
-        if(m_playlistContent.size() == 100){
-            if(m_f_Log) log_i("the maximum number of lines in the playlist has been reached");
+        if(!m_f_psramFound && m_playlistContent.size() == 101){
+            AUDIO_INFO("the number of lines in playlist > 100, for bigger playlist use PSRAM!");
             break;
         }
         // termination conditions
@@ -1432,91 +1448,67 @@ const char* VS1053::parsePlaylist_ASX(){                             // Advanced
     return host;
 }
 //----------------------------------------------------------------------------------------------------------------------
-const char* VS1053::parsePlaylist_M3U8(){
+const char* VS1053::parsePlaylist_M3U8() {
+
+    // example: audio chunks
+    // #EXTM3U
+    // #EXT-X-TARGETDURATION:10
+    // #EXT-X-MEDIA-SEQUENCE:163374040
+    // #EXT-X-DISCONTINUITY
+    // #EXTINF:10,title="text=\"Spot Block End\" amgTrackId=\"9876543\"",artist=" ",url="length=\"00:00:00\""
+    // http://n3fa-e2.revma.ihrhls.com/zc7729/63_sdtszizjcjbz02/main/163374038.aac
+    // #EXTINF:10,title="text=\"Spot Block End\" amgTrackId=\"9876543\"",artist=" ",url="length=\"00:00:00\""
+    // http://n3fa-e2.revma.ihrhls.com/zc7729/63_sdtszizjcjbz02/main/163374039.aac
+
+    static uint64_t xMedSeq = 0;
+    static boolean f_medSeq_found = false;
+    boolean f_EXTINF_found = false;
+    char llasc[21]; // uint64_t max = 18,446,744,073,709,551,615  thats 20 chars + \0
+    if(m_f_firstM3U8call){
+        m_f_firstM3U8call = false;
+        xMedSeq = 0;
+        f_medSeq_found = false;
+    }
+
     uint8_t lines = m_playlistContent.size();
     bool    f_begin = false;
-    uint8_t occurence = 0;
+    const char* ret;
     if(lines) {
-        for(int i = 0; i < lines; i++) {
+        for(uint16_t i = 0; i < lines; i++) {
             if(strlen(m_playlistContent[i]) == 0) continue;    // empty line
-            if(startsWith(m_playlistContent[i], "#EXTM3U")) {  // what we expected
-                f_begin = true;
-                continue;
-            }
+            if(startsWith(m_playlistContent[i], "#EXTM3U")) {f_begin = true;  continue;} // what we expected
             if(!f_begin) continue;
 
-            // example: redirection
-            // #EXTM3U
-            // #EXT-X-STREAM-INF:BANDWIDTH=22050,CODECS="mp4a.40.2"
-            // http://ample.revma.ihrhls.com/zc7729/63_sdtszizjcjbz02/playlist.m3u8
-            if(startsWith(m_playlistContent[i], "#EXT-X-STREAM-INF:")) {
-                if(occurence > 0) break;  // no more than one #EXT-X-STREAM-INF: (can have different BANDWIDTH)
-                occurence++;
-                if((!endsWith(m_playlistContent[i + 1], "m3u8") && indexOf(m_playlistContent[i + 1], "m3u8?") == -1)) {
-                    // we have a new m3u8 playlist, skip to next line
-                    int pos = indexOf(m_playlistContent[i], "CODECS=\"mp4a", 18);
-                    // 'mp4a.40.01' AAC Main
-                    // 'mp4a.40.02' AAC LC (Low Complexity)
-                    // 'mp4a.40.03' AAC SSR (Scalable Sampling Rate) ??
-                    // 'mp4a.40.03' AAC LTP (Long Term Prediction) ??
-                    // 'mp4a.40.03' SBR (Spectral Band Replication)
-                    if(pos < 0) {  // not found
-                        int pos1 = indexOf(m_playlistContent[i], "CODECS=", 18);
-                        if(pos1 < 0) pos1 = 0;
-                        log_e("codec %s in m3u8 playlist not supported", m_playlistContent[i] + pos1);
-                        goto exit;
-                    }
-                }
-                i++;                      // next line
-                if(i == lines) continue;  // and exit for()
-
-                char* tmp = nullptr;
-                if(!startsWith(m_playlistContent[i], "http")) {
-                    // http://livees.com/prog_index.m3u8 and prog_index48347.aac -->
-                    // http://livees.com/prog_index48347.aac http://livees.com/prog_index.m3u8 and chunklist022.m3u8 -->
-                    // http://livees.com/chunklist022.m3u8
-                    tmp = (char*)malloc(strlen(m_lastHost) + strlen(m_playlistContent[i]));
-                    strcpy(tmp, m_lastHost);
-                    int idx = lastIndexOf(tmp, "/");
-                    strcpy(tmp + idx + 1, m_playlistContent[i]);
-                }
-                else { tmp = strdup(m_playlistContent[i]); }
-                if(m_playlistContent[i]) {
-                    free(m_playlistContent[i]);
-                    m_playlistContent[i] = NULL;
-                }
-                m_playlistContent[i] = strdup(tmp);
-                strcpy(m_lastHost, tmp);
-                if(tmp) {
-                    free(tmp);
-                    tmp = NULL;
-                }
-                if(m_f_Log) log_i("redirect %s", m_playlistContent[i]);
-                _client->stop();
-                return m_playlistContent[i];  // it's a redirection, a new m3u8 playlist
+            if(startsWith(m_playlistContent[i], "#EXT-X-STREAM-INF:")){
+                ret = m3u8redirection();
+                if(ret) return ret;
             }
 
-            // example: audio chunks
-            // #EXTM3U
-            // #EXT-X-TARGETDURATION:10
-            // #EXT-X-MEDIA-SEQUENCE:163374040
-            // #EXT-X-DISCONTINUITY
-            // #EXTINF:10,title="text=\"Spot Block End\" amgTrackId=\"9876543\"",artist=" ",url="length=\"00:00:00\""
-            // http://n3fa-e2.revma.ihrhls.com/zc7729/63_sdtszizjcjbz02/main/163374038.aac
-            // #EXTINF:10,title="text=\"Spot Block End\" amgTrackId=\"9876543\"",artist=" ",url="length=\"00:00:00\""
-            // http://n3fa-e2.revma.ihrhls.com/zc7729/63_sdtszizjcjbz02/main/163374039.aac
-            if(startsWith(m_playlistContent[i], "#EXT-X-MEDIA-SEQUENCE:")) {
-                // do nothing, because MEDIA-SECUENCE is not set sometimes
+            // "#EXT-X-DISCONTINUITY-SEQUENCE: // not used, 0: seek for continuity numbers, is sometimes not set
+            // "#EXT-X-MEDIA-SEQUENCE:"        // not used, is unreliable
+            if (startsWith(m_playlistContent[i], "#EXT-X-VERSION:")) continue;
+            if (startsWith(m_playlistContent[i], "#EXT-X-ALLOW-CACHE:")) continue;
+            if (startsWith(m_playlistContent[i], "##")) continue;
+            if (startsWith(m_playlistContent[i], "#EXT-X-INDEPENDENT-SEGMENTS")) continue;
+            // (startsWith(m_playlistContent[i],#EXT-X-PROGRAM-DATE-TIME:)) continue;
+
+            if(!f_medSeq_found){
+                xMedSeq = m3u8_findMediaSeqInURL();
+                if(xMedSeq > 0) f_medSeq_found = true;
+                if(xMedSeq == 0){
+                    log_e("X MEDIA SEQUENCE NUMBER not found");
+                    return NULL;
+                }
             }
-            static uint16_t targetDuration = 0;
-            if(startsWith(m_playlistContent[i], "#EXT-X-TARGETDURATION:")) {
-                targetDuration = atoi(m_playlistContent[i] + 22);
-            }
-            if(targetDuration) m_m3u8_targetDuration = targetDuration;
-            if(m_f_Log) log_i("m_m3u8_targetDuration %d", m_m3u8_targetDuration);
+
+            // if(startsWith(m_playlistContent[i], "#EXT-X-TARGETDURATION:")) {
+            //     m_m3u8_targetDuration = atoi(m_playlistContent[i] + 22);
+            //     if(m_f_Log) log_i("m_m3u8_targetDuration %d", m_m3u8_targetDuration);
+            // }
 
             if(startsWith(m_playlistContent[i], "#EXTINF")) {
-                if(STfromEXTINF(m_playlistContent[i])) showstreamtitle(m_chbuf);
+                f_EXTINF_found = true;
+                if(STfromEXTINF(m_playlistContent[i])) {showstreamtitle(m_chbuf);}
                 i++;
                 if(i == lines) continue;  // and exit for()
 
@@ -1531,36 +1523,21 @@ const char* VS1053::parsePlaylist_M3U8(){
                 }
                 else { tmp = strdup(m_playlistContent[i]); }
 
-                uint32_t hash = simpleHash(tmp);
-                if(m_hashQueue.size() == 0) {
-                    m_hashQueue.insert(m_hashQueue.begin(), hash);
+                lltoa(xMedSeq, llasc, 10);
+                if(indexOf(tmp, llasc) > 0){
                     m_playlistURL.insert(m_playlistURL.begin(), strdup(tmp));
+                    xMedSeq++;
                 }
-                else {
-                    bool known = false;
-                    for(int i = 0; i < m_hashQueue.size(); i++) {
-                        if(hash == m_hashQueue[i]) {
-                            if(m_f_Log) log_i("file already known %s", tmp);
-                            known = true;
-                        }
-                    }
-                    if(!known) {
-                        m_hashQueue.insert(m_hashQueue.begin(), hash);
-                        m_playlistURL.insert(m_playlistURL.begin(), strdup(tmp));
-                    }
-                }
-
-                if(m_hashQueue.size() > 20) m_hashQueue.pop_back();
 
                 if(tmp) {
                     free(tmp);
                     tmp = NULL;
                 }
 
-                if(m_playlistURL.size() == 20) {
-                    ESP_LOGD("", "can't stuff anymore");
-                    break;
-                }
+                // if(m_playlistURL.size() == 20) {
+                //     ESP_LOGD("", "can't stuff anymore");
+                //     break;
+                // }
                 continue;
             }
         }
@@ -1584,10 +1561,172 @@ const char* VS1053::parsePlaylist_M3U8(){
         if(endsWith(m_playlistBuff, "ts")) m_f_ts = true;
         return m_playlistBuff;
     }
-    else { return NULL; }
+    else {
+        if(f_EXTINF_found){
+            uint64_t mediaSeq = m3u8_findMediaSeqInURL();
+            if(xMedSeq == 0) {log_e("xMediaSequence not found"); connecttohost(m_lastHost);}
+            if(mediaSeq < xMedSeq){
+                uint64_t diff = xMedSeq - mediaSeq;
+                if(diff < 10) {;}
+                else {
+                    if(m_playlistContent.size() > 0){
+                        for(int j = 0; j < lines; j++){
+                            log_w("lines %i, %s",lines, m_playlistContent[j]);
+                        }
+                    }
+                    else{;}
+
+                    if(m_playlistURL.size() > 0){
+                        for(int j = 0; j < m_playlistURL.size(); j++){
+                            log_w("m_playlistURL lines %i, %s",j, m_playlistURL[j]);
+                        }
+                    }
+                    else{;}
+
+                    if(m_playlistURL.size() == 0) connecttohost(m_lastHost);
+                }
+            }
+            else{
+                log_e("err, %u packets lost from %u, to %u", mediaSeq - xMedSeq, xMedSeq, mediaSeq);
+                xMedSeq = mediaSeq;
+            }
+        }
+        return NULL;
+    }
+
+    return NULL;
+}
+//---------------------------------------------------------------------------------------------------------------------
+const char* VS1053::m3u8redirection(){
+    // example: redirection
+    // #EXTM3U
+    // #EXT-X-STREAM-INF:BANDWIDTH=117500,AVERAGE-BANDWIDTH=117000,CODECS="mp4a.40.2"
+    // 112/playlist.m3u8?hlssid=7562d0e101b84aeea0fa35f8b963a174
+    // #EXT-X-STREAM-INF:BANDWIDTH=69500,AVERAGE-BANDWIDTH=69000,CODECS="mp4a.40.5"
+    // 64/playlist.m3u8?hlssid=7562d0e101b84aeea0fa35f8b963a174
+    // #EXT-X-STREAM-INF:BANDWIDTH=37500,AVERAGE-BANDWIDTH=37000,CODECS="mp4a.40.29"
+    // 32/playlist.m3u8?hlssid=7562d0e101b84aeea0fa35f8b963a174
+
+    uint32_t bw[20] = {0};
+    uint32_t finalBW = 0;
+    uint16_t choosenLine = 0;
+    uint16_t plcSize = m_playlistContent.size();
+    if(plcSize > 20) plcSize = 20;
+    int16_t posBW = 0;
+
+    for(uint16_t i = 0; i < plcSize; i++){   // looking for best (highest) bandwidth
+        posBW = indexOf(m_playlistContent[i], "BANDWIDTH=");
+        if(posBW > 0){
+            char* endP;
+            bw[i] = strtol(m_playlistContent[i] + posBW + 10, &endP, 10); // read until comma
+        }
+    }
+    for(uint16_t i = 0; i < plcSize; i++){
+        if(bw[i] > finalBW) {finalBW = bw[i], choosenLine = i + 1;}
+    }
+    AUDIO_INFO("bandwidth: %lu bit/s", (long unsigned)finalBW);
+
+    char* tmp = nullptr;
+    if((!endsWith(m_playlistContent[choosenLine], "m3u8") && indexOf(m_playlistContent[choosenLine], "m3u8?") == -1)) {
+        // we have a new m3u8 playlist, skip to next line
+        int pos = indexOf(m_playlistContent[choosenLine - 1], "CODECS=\"mp4a", 18);
+        // 'mp4a.40.01' AAC Main
+        // 'mp4a.40.02' AAC LC (Low Complexity)
+        // 'mp4a.40.03' AAC SSR (Scalable Sampling Rate) ??
+        // 'mp4a.40.03' AAC LTP (Long Term Prediction) ??
+        // 'mp4a.40.03' SBR (Spectral Band Replication)
+        if(pos < 0) {  // not found
+            int pos1 = indexOf(m_playlistContent[choosenLine - 1], "CODECS=", 18);
+            if(pos1 < 0) pos1 = 0;
+            log_e("codec %s in m3u8 playlist not supported", m_playlistContent[choosenLine - 1] + pos1);
+            goto exit;
+        }
+    }
+    if(!startsWith(m_playlistContent[choosenLine], "http")) {
+
+        // http://livees.com/prog_index.m3u8 and prog_index48347.aac -->
+        // http://livees.com/prog_index48347.aac http://livees.com/prog_index.m3u8 and chunklist022.m3u8 -->
+        // http://livees.com/chunklist022.m3u8
+
+
+        tmp = (char*)malloc(strlen(m_lastHost) + strlen(m_playlistContent[choosenLine]));
+        strcpy(tmp, m_lastHost);
+        int idx1 = lastIndexOf(tmp, "/");
+        strcpy(tmp + idx1 + 1, m_playlistContent[choosenLine]);
+    }
+    else { tmp = strdup(m_playlistContent[choosenLine]); }
+
+    if(m_playlistContent[choosenLine]) {
+        free(m_playlistContent[choosenLine]);
+        m_playlistContent[choosenLine] = NULL;
+    }
+    m_playlistContent[choosenLine] = strdup(tmp);
+    strcpy(m_lastHost, tmp);
+    if(tmp) {
+        free(tmp);
+        tmp = NULL;
+    }
+    if(m_f_Log) log_i("redirect %s", m_playlistContent[choosenLine]);
+    _client->stop();
+    return m_playlistContent[choosenLine];  // it's a redirection, a new m3u8 playlist
 exit:
     stopSong();
     return NULL;
+}
+//---------------------------------------------------------------------------------------------------------------------
+uint64_t VS1053::m3u8_findMediaSeqInURL(){ // We have no clue what the media sequence is
+
+    char* pEnd;
+    uint64_t MediaSeq = 0;
+    uint8_t  idx = 0;
+    uint16_t linesWithURL[3] = {0};
+    char llasc[21]; // uint64_t max = 18,446,744,073,709,551,615  thats 20 chars + \0
+
+    for(uint16_t i = 0; i < m_playlistContent.size(); i++){
+        if(startsWith(m_playlistContent[i], "#EXTINF:")) {
+            linesWithURL[idx] = i + 1;
+            idx++;
+            if(idx == 3) break;
+        }
+    }
+    if(idx < 3){
+        log_e("not enough lines with \"#EXTINF:\" found");
+        return 0;
+    }
+
+    // Look for differences from right:                                                    ∨
+    // http://lampsifmlive.mdc.akamaized.net/strmLampsi/userLampsi/l_50551_3318804060_229668.aac
+    // http://lampsifmlive.mdc.akamaized.net/strmLampsi/userLampsi/l_50551_3318810050_229669.aac
+    // go back to first digit:                                                        ∧
+
+    // log_i("m_playlistContent[linesWithURL[0]] %s", m_playlistContent[linesWithURL[0]]);
+    // log_i("m_playlistContent[linesWithURL[1]] %s", m_playlistContent[linesWithURL[1]]);
+    // log_i("m_playlistContent[linesWithURL[2]] %s", m_playlistContent[linesWithURL[2]]);
+
+    int16_t len = strlen(m_playlistContent[linesWithURL[0]]) - 1;
+    int16_t qm = indexOf(m_playlistContent[linesWithURL[0]], "?", 0);
+    if(qm > 0) len = qm; // If we find a question mark, look to the left of it
+
+    for(int16_t pos = len; pos >= 0  ; pos--){
+        if(isdigit(m_playlistContent[linesWithURL[0]][pos])){
+            while(isdigit(m_playlistContent[linesWithURL[0]][pos])) pos--;
+            pos++;
+            uint64_t a, b, c;
+            a = strtoull(m_playlistContent[linesWithURL[0]] + pos, &pEnd, 10);
+            b = a + 1;
+            c = b + 1;
+            lltoa(b, llasc, 10);
+            int16_t idx_b = indexOf(m_playlistContent[linesWithURL[1]], llasc);
+            lltoa(c, llasc, 10);
+            int16_t idx_c = indexOf(m_playlistContent[linesWithURL[2]], llasc);
+            if(idx_b > 0 && idx_c > 0){
+                MediaSeq = a;
+                AUDIO_INFO("media sequence number: %llu", MediaSeq);
+                break;
+            }
+        }
+    }
+    return MediaSeq;
 }
 //---------------------------------------------------------------------------------------------------------------------
 bool VS1053::STfromEXTINF(char* str){
@@ -1736,6 +1875,7 @@ bool VS1053::parseHttpResponseHeader() { // this is the response to a GET / requ
         uint16_t pos = 0;
         if((millis() - ctime) > timeout) {
             log_e("timeout");
+            m_f_timeout = true;
             goto exit;
         }
         while(_client->available()){
@@ -2084,11 +2224,13 @@ void VS1053::setDefaults(){
     client.stop();
     clientsecure.stop();
     _client = static_cast<WiFiClient*>(&client); /* default to *something* so that no NULL deref can happen */
+    m_f_timeout = false;
     m_f_ctseen=false;                                       // Contents type not seen yet
     m_metaint=0;                                            // No metaint yet
     m_LFcount=0;                                            // For detection end of header
     m_bitrate=0;                                            // Bitrate still unknown
     m_f_firstCall = true;                                   // InitSequence for processWebstream and processLokalFile
+    m_f_firstM3U8call = true; // InitSequence for parsePlaylist_M3U8
     m_controlCounter = 0;
     m_f_firstchunk=true;                                    // First chunk expected
     m_f_chunked=false;                                      // Assume not chunked
