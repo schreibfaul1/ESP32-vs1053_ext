@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Oct 19.2023
+ *  Updated on: Oct 20.2023
  *      Author: Wolle
  */
 
@@ -165,6 +165,7 @@ private:
     uint16_t        m_chbufSize = 0;                // will set in constructor (depending on PSRAM)
     uint16_t        m_ibuffSize = 0;                // will set in constructor (depending on PSRAM)
     char*           m_lastHost = NULL;              // Store the last URL to a webstream
+    char*           m_lastM3U8host = NULL;          // Store the last M3U8-URL to a webstream
     char*           m_playlistBuff = NULL;          // stores playlistdata
     uint8_t         m_codec = CODEC_NONE;           //
     uint8_t         m_expectedCodec = CODEC_NONE;   // set in connecttohost (e.g. http://url.mp3 -> CODEC_MP3)
