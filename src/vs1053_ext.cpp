@@ -1711,7 +1711,7 @@ uint64_t VS1053::m3u8_findMediaSeqInURL(){ // We have no clue what the media seq
     }
     if(idx < 3){
         log_e("not enough lines with \"#EXTINF:\" found");
-        return 0;
+        return UINT64_MAX;
     }
 
     // Look for differences from right:                                                    ∨
@@ -1736,10 +1736,10 @@ uint64_t VS1053::m3u8_findMediaSeqInURL(){ // We have no clue what the media seq
             b = a + 1;
             c = b + 1;
             lltoa(b, llasc, 10);
-            int16_t idx_b = indexOf(m_playlistContent[linesWithURL[1]], llasc);
+            int16_t idx_b = indexOf(m_playlistContent[linesWithURL[1]], llasc, pos - 1);
             lltoa(c, llasc, 10);
-            int16_t idx_c = indexOf(m_playlistContent[linesWithURL[2]], llasc);
-            if(idx_b > 0 && idx_c > 0){
+            int16_t idx_c = indexOf(m_playlistContent[linesWithURL[2]], llasc, pos - 1);
+            if(idx_b > 0 && idx_c > 0 && idx_b - pos < 3 && idx_c - pos < 3){ // idx_b and idx_c must be positive and near pos
                 MediaSeq = a;
                 AUDIO_INFO("media sequence number: %llu", MediaSeq);
                 break;
