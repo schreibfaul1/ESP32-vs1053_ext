@@ -803,7 +803,7 @@ void VS1053::processWebStream() {
 
     // buffer fill routine - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     if(availableBytes) {
-        availableBytes = min(availableBytes, InBuff.writeSpace());
+        availableBytes = min(availableBytes, (uint32_t)InBuff.writeSpace());
         int16_t bytesAddedToBuffer = _client->read(InBuff.getWritePtr(), availableBytes);
 
         if(bytesAddedToBuffer > 0) {
