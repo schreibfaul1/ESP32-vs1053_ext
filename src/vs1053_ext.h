@@ -2,7 +2,7 @@
  *  vs1053_ext.h
  *
  *  Created on: Jul 09.2017
- *  Updated on: Oct 22.2023
+ *  Updated on: Oct 23.2023
  *      Author: Wolle
  */
 
@@ -20,6 +20,10 @@
 #include "FFat.h"
 #include "WiFiClient.h"
 #include "WiFiClientSecure.h"
+
+#if ESP_IDF_VERSION_MAJOR >= 5
+    #include "driver/gpio.h"
+#endif
 
 #include "vs1053b-patches-flac.h"
 
@@ -225,10 +229,19 @@ protected:
         #define ESP_ARDUINO_VERSION_PATCH 0
     #endif
 
-    inline void DCS_HIGH() {(dcs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << (dcs_pin - 32) : GPIO.out_w1ts = 1 << dcs_pin;}
-    inline void DCS_LOW()  {(dcs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << (dcs_pin - 32) : GPIO.out_w1tc = 1 << dcs_pin;}
-    inline void CS_HIGH()  {( cs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << ( cs_pin - 32) : GPIO.out_w1ts = 1 <<  cs_pin;}
-    inline void CS_LOW()   {( cs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << ( cs_pin - 32) : GPIO.out_w1tc = 1 <<  cs_pin;}
+    #if ESP_IDF_VERSION_MAJOR < 5
+        inline void DCS_HIGH() {(dcs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << (dcs_pin - 32) : GPIO.out_w1ts = 1 << dcs_pin;}
+        inline void DCS_LOW()  {(dcs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << (dcs_pin - 32) : GPIO.out_w1tc = 1 << dcs_pin;}
+        inline void CS_HIGH()  {( cs_pin&0x20) ? GPIO.out1_w1ts.data = 1 << ( cs_pin - 32) : GPIO.out_w1ts = 1 <<  cs_pin;}
+        inline void CS_LOW()   {( cs_pin&0x20) ? GPIO.out1_w1tc.data = 1 << ( cs_pin - 32) : GPIO.out_w1tc = 1 <<  cs_pin;}
+    #else
+        inline void DCS_HIGH() {gpio_set_level((gpio_num_t)dcs_pin, 1);}
+        inline void DCS_LOW()  {gpio_set_level((gpio_num_t)dcs_pin, 0);}
+        inline void CS_HIGH()  {gpio_set_level((gpio_num_t) cs_pin, 1);}
+        inline void CS_LOW()   {gpio_set_level((gpio_num_t) cs_pin, 0);}
+    #endif
+
+
     inline void await_data_request() {while(!digitalRead(dreq_pin)) NOP();}	  // Very short delay
     inline bool data_request()     {return(digitalRead(dreq_pin) == HIGH);}
 
